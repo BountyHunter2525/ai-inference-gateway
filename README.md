@@ -1,206 +1,317 @@
-# NexusAI — Intelligent AI Inference Gateway & Semantic Cache
+# NexusAI — Smart AI Gateway with Semantic Caching 🚀
 
-[![CI](https://github.com/BountyHunter2525/ai-inference-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/BountyHunter2525/ai-inference-gateway/actions/workflows/ci.yml)
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
+> A lightweight AI inference gateway that caches similar queries to reduce costs and latency. Built as a college project to explore semantic similarity, caching strategies, and API design.
+
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.143%2B-009688.svg)](https://fastapi.tiangolo.com/)
-[![Redis](https://img.shields.io/badge/Redis-7.0%2B-dc382d.svg)](https://redis.io/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-
-**NexusAI** is a high-performance **AI Inference Gateway** designed to act as a smart proxy between user applications and Large Language Model (LLM) providers (Hugging Face, OpenAI, OpenRouter, or local engines). 
-
-It features **Semantic Vector Caching**, **Real-Time Volatility Classification**, **Sliding-Window Rate Limiting**, and an interactive **Developer Playground**.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
 
-## 📌 The Problem NexusAI Solves
+## 💡 What is this?
 
-Standard API calls to LLM providers are expensive, slow (often 500ms–3000ms), and repetitive:
-* Up to **80% of customer queries** in FAQs, customer support, and document querying are semantically identical or near-identical.
-* **Exact match caching fails** when a user asks *"What is the capital of France?"* vs. *"What is France's capital city?"*.
-* **Naive semantic caching returns stale answers** when queries involve dynamic data (e.g. *"What is the weather today?"* or *"Latest Bitcoin price"*).
+Ever notice how LLM APIs like OpenAI charge per request, even if you ask the same question twice? **NexusAI fixes that.**
 
-### NexusAI's 3-Layer Solution:
-1. **Semantic Vector Similarity ($\ge 0.92$)**: Converts prompts to high-dimensional embeddings and calculates cosine similarity against stored vectors in Redis. Cache hits return previously computed AI responses in **< 10ms**.
-2. **Dynamic Volatility Classifier**: Automatically detects real-time intents (`weather`, `price`, `latest news`, `now`) and routes directly to the LLM, bypassing cache.
-3. **Automatic TTL (Time-To-Live)**: Stored responses expire gracefully according to volatility windows.
+It sits between your app and the LLM, caching responses intelligently. Ask "What is the capital of France?" and later ask "What's France's capital city?" — it recognizes they're the same question and returns the cached answer instantly (5ms instead of 2 seconds).
 
----
-
-## 🏗️ Architecture
-
-```
-User / Web Playground / Client Apps
-                 │
-                 ▼  (POST /api/v1/infer with API Key)
-      ┌──────────────────────────────────────────────┐
-      │               NexusAI Gateway                │
-      │                                              │
-      │  1. Auth & Sliding Window Rate Limiter       │
-      │  2. Volatility Query Classifier              │
-      │  3. Sentence Embedding Engine                │
-      └───────┬──────────────────────────────┬───────┘
-              │                              │
-     (Semantic Match >= 0.92)         (Cache MISS / Real-time)
-              │                              │
-              ▼                              ▼
-      ┌───────────────┐              ┌──────────────────────────┐
-      │  Redis Cache  │              │    LLM Model Providers   │
-      │ (Vectors+TTL) │              │  - Hugging Face API      │
-      │  Latency <10ms│              │  - OpenAI / OpenRouter   │
-      └───────────────┘              │  - Nexus Mock Engine     │
-                                     └─────────────┬────────────┘
-                                                   │
-                                                   ▼
-                                        Save Vector + Response
-                                            into Redis (TTL)
-```
+### Key Features:
+- 🧠 **Semantic matching** — understands similar questions using ML embeddings
+- ⚡ **5ms cache hits** vs 2000ms LLM calls
+- 💰 **Cost savings** — no repeated API charges
+- 📊 **Live monitoring** — see hit rates, latency, and usage
+- 🎨 **Web playground** — test queries in your browser
+- 🔑 **API key management** — create and manage access keys
 
 ---
 
 ## 🚀 Quick Start
 
-### Option A: Run with Docker Compose (Recommended)
-
-Requires Docker & Docker Compose:
+### Run with Docker (Easiest!)
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/NexusAI.git
-cd NexusAI
+# Clone and run
+git clone https://github.com/BountyHunter2525/ai-inference-gateway.git
+cd ai-inference-gateway
+docker compose up
 
-# Launch Gateway and Redis
-docker compose up --build
+# Open browser → http://localhost:8000
 ```
-The gateway and interactive playground will be live at `http://localhost:8000`.
 
----
+**Default API key:** `sk-nexus-dev-demo-key`
 
-### Option B: Run Locally with Python
-
-Works out of the box even without Redis installed (automatically uses In-Memory vector store fallback):
+### Or run locally
 
 ```bash
-cd NexusAI/backend
-
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install dependencies
+cd backend
 pip install -r requirements.txt
-
-# Start the gateway
-python -m uvicorn app.main:app --reload --port 8000
+python -m uvicorn app.main:app --reload
 ```
-
-Open `http://localhost:8000` in your browser to access the Developer Playground!
 
 ---
 
-## 🧪 Testing the Semantic Cache
+## 🧪 Try It Out
 
+### 1. Use the Web Playground
 1. Open `http://localhost:8000`
-2. **First Query (Cache MISS)**:
-   - Click the sample: `What is the capital of France?`
-   - Click **Execute Inference**.
-   - Notice the badge says `CACHE MISS`, latency is ~200ms, and the entry appears in the **Active Cached Memory Entries** table.
-3. **Second Query (Semantic Cache HIT)**:
-   - Click the sample: `What is France's capital city?`
-   - Click **Execute Inference**.
-   - Notice the badge turns green: `CACHE HIT`, latency drops to **~5ms**, and the similarity score indicates a match!
-4. **Third Query (Volatile Cache Bypass)**:
-   - Click the sample: `What is the weather today in Tokyo?`
-   - Notice the gateway detects temporal volatility and tags it with `REALTIME BYPASS`, ensuring fresh data is always fetched.
+2. Click "Playground" tab
+3. Type: **"What is the capital of France?"**
+4. Click Execute → see `CACHE MISS` (first time, ~200ms)
+5. Try: **"What's France's capital city?"** → see `CACHE HIT` + similarity 94%! (~5ms)
+
+### 2. Test with curl
+
+```bash
+# First query (MISS)
+curl -X POST http://localhost:8000/api/v1/infer \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: sk-nexus-dev-demo-key" \
+  -d '{"prompt": "What is the capital of France?", "provider": "mock"}'
+
+# Similar query (HIT!)
+curl -X POST http://localhost:8000/api/v1/infer \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: sk-nexus-dev-demo-key" \
+  -d '{"prompt": "What is France capital city?", "provider": "mock"}'
+```
 
 ---
 
-## 📡 API Reference
+## 🏗️ How It Works
 
-### 1. Execute Inference
-`POST /api/v1/infer`
-
-**Headers:**
-* `X-API-Key: sk-nexus-dev-demo-key`
-* `Content-Type: application/json`
-
-**Request Body:**
-```json
-{
-  "prompt": "What is the capital of France?",
-  "provider": "mock",
-  "bypass_cache": false,
-  "temperature": 0.7
-}
+```
+Your App → NexusAI Gateway → LLM (OpenAI/HuggingFace)
+               ↓
+           Redis Cache
 ```
 
-**Response:**
-```json
-{
-  "prompt": "What is the capital of France?",
-  "response": "The capital of France is Paris. It is renowned for its art, fashion, gastronomy, and culture.",
-  "model": "nexus-mock-v1",
-  "provider": "mock",
-  "cache_hit": true,
-  "similarity_score": 0.965,
-  "latency_ms": 4.82,
-  "tokens_used": 28,
-  "bypassed_due_to_volatility": false,
-  "timestamp": 1729094000.12
-}
-```
+**Step-by-step:**
+1. **Request arrives** → Check if it's a "live" query (weather, stock prices)
+2. **Generate embedding** → Convert text to a 384-dimensional vector
+3. **Search cache** → Find similar vectors (cosine similarity ≥ 0.92)
+4. **Cache HIT?** → Return cached response instantly (5ms)
+5. **Cache MISS?** → Call LLM, cache result, return (500-2000ms)
 
-### 2. Cache Telemetry & Stats
-`GET /api/v1/cache/stats`
-
-Returns active cache size, hit/miss ratios, and entry lists with remaining TTL.
-
-### 3. Flush Cache
-`DELETE /api/v1/cache/clear`
-
-Purges all cached vectors and resets telemetry counters.
-
-### 4. Health Check
-`GET /api/v1/health`
+**Smart TTL (Cache Duration):**
+- **Factual** queries ("capital of France") → 24 hours
+- **Technical** queries ("how to use Docker") → 6 hours  
+- **General** queries → 1 hour
+- **Live** queries ("weather today") → bypass cache
 
 ---
 
-## 📂 Project Structure
+## 📊 Features
+
+### Core Functionality
+✅ **Semantic Caching** — Similar questions get the same answer  
+✅ **Multiple LLM Providers** — Mock (testing), HuggingFace (free), OpenAI  
+✅ **Smart TTL** — Different cache durations for different query types  
+✅ **Live Query Detection** — Bypasses cache for real-time data  
+✅ **Rate Limiting** — Prevents abuse (100 req/min per key)
+
+### Monitoring & Admin
+✅ **Web Dashboard** — 3 tabs: Playground, Monitoring, Admin  
+✅ **Prometheus Metrics** — Cache hit rates, latency percentiles  
+✅ **API Key Management** — Create/revoke keys with daily quotas  
+✅ **Audit Log** — Track all API usage and events
+
+### Testing
+✅ **117 Unit Tests** — Good test coverage  
+✅ **CI Pipeline** — GitHub Actions for automated testing
+
+---
+
+## 🔧 Configuration
+
+Create a `.env` file in the backend folder (optional):
+
+```bash
+# Redis (optional - uses in-memory fallback if not available)
+REDIS_URL=redis://localhost:6379
+
+# LLM Providers (only if you want real AI responses)
+HUGGINGFACE_API_TOKEN=hf_your_token_here
+OPENAI_API_KEY=sk-your_key_here
+
+# Defaults work fine for testing
+CACHE_MAX_ENTRIES=500
+SIMILARITY_THRESHOLD=0.92
+```
+
+---
+
+## 📱 Main API Endpoints
+
+- `POST /api/v1/infer` — Execute inference with caching
+- `GET /api/v1/health` — Health check
+- `GET /api/v1/cache/stats` — View cache statistics
+- `GET /api/v1/metrics` — Prometheus metrics
+- `GET /docs` — Interactive API documentation
+
+### Admin Endpoints (requires admin key)
+- `GET /admin/keys` — List all API keys
+- `POST /admin/keys` — Create new API key
+- `GET /admin/audit` — View audit log
+
+---
+
+## 🧪 Testing
+
+```bash
+cd backend
+pip install pytest pytest-asyncio
+pytest -v
+
+# Output: 117 tests passed ✓
+```
+
+Tests cover:
+- Semantic similarity matching
+- Cache hit/miss logic
+- Query volatility detection  
+- Rate limiting
+- All API endpoints
+
+---
+
+## 🌐 Deploy It!
+
+### Quick Deploy (Free Tier)
+
+**Option 1: Render.com** (Recommended)
+1. Create account at [render.com](https://render.com)
+2. "New → Web Service" → Connect GitHub repo
+3. Build command: `cd backend && pip install -r requirements.txt`
+4. Start command: `cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+5. Add Redis service (also free on Render)
+6. Set `REDIS_URL` environment variable
+7. Deploy! 🎉
+
+**Option 2: Railway.app**
+1. Create account at [railway.app](https://railway.app)
+2. "New Project" → Deploy from GitHub
+3. Add Redis service
+4. Set environment variables
+5. Deploy!
+
+**Option 3: DigitalOcean / AWS / GCP**
+```bash
+# SSH into your server
+git clone https://github.com/BountyHunter2525/ai-inference-gateway.git
+cd ai-inference-gateway
+docker compose up -d
+```
+
+---
+
+## 📈 Performance & Cost Savings
+
+| Scenario | Latency | Cost |
+|----------|---------|------|
+| Cache HIT | ~5ms | $0 |
+| Cache MISS | 500-2000ms | Normal LLM cost |
+| 80% hit rate | ~100ms avg | 80% cost reduction |
+
+**Real example:**  
+If you process 10,000 queries/day with an 80% hit rate:
+- Without cache: 10,000 LLM calls = **$20/day**
+- With NexusAI: 2,000 LLM calls = **$4/day**
+- **Savings: $16/day = $480/month** 💰
+
+---
+
+## 🛠️ Tech Stack
+
+**Backend:** Python, FastAPI, Redis  
+**ML:** sentence-transformers (all-MiniLM-L6-v2)  
+**Frontend:** Vanilla JavaScript, HTML/CSS  
+**Deployment:** Docker, Docker Compose  
+**Monitoring:** Prometheus metrics  
+**Testing:** pytest (117 tests)
+
+---
+
+## 🎓 Project Context
+
+This was built as a **3rd year college project** to explore:
+- Semantic search using sentence-transformers
+- Caching strategies (LRU eviction, TTL policies)
+- REST API design with FastAPI
+- Observability and monitoring
+- Full-stack development
+
+### What I Learned:
+- How ML embeddings work and why they're useful for similarity
+- Redis as a vector database
+- Building production-ready APIs with proper authentication
+- Docker containerization and deployment
+- Writing maintainable unit tests
+- Prometheus metrics and monitoring
+
+---
+
+## 📝 Project Structure
 
 ```
 NexusAI/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py                  # FastAPI app & static playground mount
-│   │   ├── config.py                # Environment configurations
-│   │   ├── api/
-│   │   │   ├── deps.py              # API Key auth & sliding rate limit
-│   │   │   └── v1/
-│   │   │       ├── inference.py     # POST /api/v1/infer
-│   │   │       ├── cache_admin.py   # GET/DELETE /api/v1/cache
-│   │   │       └── health.py        # GET /api/v1/health
-│   │   ├── services/
-│   │   │   ├── semantic_cache.py    # Vector similarity cache (Cosine >= 0.92)
-│   │   │   ├── query_classifier.py  # Volatility / real-time query detection
-│   │   │   ├── rate_limiter.py      # Redis sliding window counter
-│   │   │   ├── embedder.py          # Sentence-transformers embedder + fallback
-│   │   │   └── llm_provider.py      # HuggingFace, OpenAI, and Mock providers
-│   │   └── schemas/
-│   │       └── inference.py         # Request & Response Pydantic models
-│   ├── tests/
-│   │   └── test_cache.py            # Automated test suite
-│   ├── requirements.txt
-│   └── Dockerfile
+│   │   ├── main.py              # FastAPI application
+│   │   ├── config.py            # Configuration
+│   │   ├── api/v1/              # API endpoints
+│   │   ├── services/            # Core logic (cache, embeddings, etc)
+│   │   └── schemas/             # Request/response models
+│   ├── tests/                   # Unit tests (117 tests)
+│   └── requirements.txt
 ├── frontend/
-│   ├── index.html                   # Developer playground UI
-│   ├── style.css                    # Glassmorphism dark mode UI
-│   └── app.js                       # Telemetry polling & interactive runner
-├── docker-compose.yml               # Gateway + Redis container orchestration
-├── .env.example
-├── .gitignore
+│   ├── index.html               # Web playground UI
+│   ├── app.js                   # JavaScript logic
+│   └── style.css                # Styling
+├── docker-compose.yml           # Docker setup
 └── README.md
 ```
 
 ---
 
+## 🤝 Contributing
+
+This is a college project but feel free to:
+- Open issues for bugs
+- Suggest improvements
+- Fork and modify for your own projects
+
+---
+
 ## 📄 License
-MIT License. Built for scalable, low-latency AI inference.
+
+MIT License — Use it for your projects, assignments, hackathons, whatever!
+
+---
+
+## 👨‍💻 Author
+
+Built by **Rashm** as a 3rd year college project exploring AI caching and API design.
+
+**GitHub:** [BountyHunter2525](https://github.com/BountyHunter2525)
+
+---
+
+## 🙏 Acknowledgments
+
+- sentence-transformers for semantic embeddings
+- FastAPI for making Python APIs easy
+- Redis for being an awesome cache
+- OpenAI/HuggingFace for LLM APIs
+
+---
+
+## 📚 Useful Resources
+
+If you want to learn more about the concepts used:
+- [Sentence Transformers Documentation](https://www.sbert.net/)
+- [FastAPI Tutorial](https://fastapi.tiangolo.com/tutorial/)
+- [Redis Caching Guide](https://redis.io/docs/manual/client-side-caching/)
+- [Cosine Similarity Explained](https://en.wikipedia.org/wiki/Cosine_similarity)
+
+---
+
+**⭐ If this helped you with your project, consider giving it a star!**
