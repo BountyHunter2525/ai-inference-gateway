@@ -12,10 +12,14 @@ Changes from original:
   - Records per-tenant Prometheus counters
 """
 
+import logging
 from fastapi import Header, HTTPException, Query, Request, Response, status
 
 from app.config import settings
 from app.services.rate_limiter import rate_limiter
+
+# Setup logging
+logger = logging.getLogger(__name__)
 
 
 async def verify_api_key(
