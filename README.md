@@ -1,7 +1,8 @@
 # NexusAI — Intelligent AI Inference Gateway & Semantic Cache
 
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688.svg)](https://fastapi.tiangolo.com/)
+[![CI](https://github.com/BountyHunter2525/ai-inference-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/BountyHunter2525/ai-inference-gateway/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.143%2B-009688.svg)](https://fastapi.tiangolo.com/)
 [![Redis](https://img.shields.io/badge/Redis-7.0%2B-dc382d.svg)](https://redis.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 

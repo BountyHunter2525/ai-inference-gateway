@@ -1,14 +1,16 @@
-import time
 import logging
-from typing import Tuple, Dict, Any, Optional
+import time
+from typing import Any, Dict, Optional, Tuple
+
 import httpx
+
 from app.config import settings
 
 logger = logging.getLogger(__name__)
 
 
 class LLMProvider:
-    async def generate(self, prompt: str, model: Optional[str] = None, max_tokens: int = 256, temperature: float = 0.7) -> Tuple[str, int, str]:
+    async def generate(self, prompt: str, model: str | None = None, max_tokens: int = 256, temperature: float = 0.7) -> tuple[str, int, str]:
         """
         Returns: (generated_text, tokens_used, model_name_used)
         """
@@ -16,11 +18,11 @@ class LLMProvider:
 
 
 class MockLLMProvider(LLMProvider):
-    async def generate(self, prompt: str, model: Optional[str] = None, max_tokens: int = 256, temperature: float = 0.7) -> Tuple[str, int, str]:
+    async def generate(self, prompt: str, model: str | None = None, max_tokens: int = 256, temperature: float = 0.7) -> tuple[str, int, str]:
         # Simulate slight inference network delay
         time.sleep(0.18)
         selected_model = model or "nexus-mock-v1"
-        
+
         lower = prompt.lower()
         if "capital of france" in lower:
             text = "The capital of France is Paris. It is renowned for its art, fashion, gastronomy, and culture."
@@ -38,11 +40,11 @@ class MockLLMProvider(LLMProvider):
 
 
 class HuggingFaceProvider(LLMProvider):
-    def __init__(self, token: Optional[str] = None, default_model: Optional[str] = None):
+    def __init__(self, token: str | None = None, default_model: str | None = None):
         self.token = token or settings.HF_API_TOKEN
         self.default_model = default_model or settings.HF_MODEL_NAME
 
-    async def generate(self, prompt: str, model: Optional[str] = None, max_tokens: int = 256, temperature: float = 0.7) -> Tuple[str, int, str]:
+    async def generate(self, prompt: str, model: str | None = None, max_tokens: int = 256, temperature: float = 0.7) -> tuple[str, int, str]:
         selected_model = model or self.default_model
         if not self.token:
             logger.warning("HF_API_TOKEN is not configured. Falling back to MockLLMProvider.")
@@ -64,7 +66,7 @@ class HuggingFaceProvider(LLMProvider):
             if resp.status_code != 200:
                 logger.error(f"Hugging Face API error {resp.status_code}: {resp.text}")
                 raise RuntimeError(f"Hugging Face API returned status {resp.status_code}: {resp.text}")
-            
+
             data = resp.json()
             if isinstance(data, list) and len(data) > 0 and "generated_text" in data[0]:
                 out = data[0]["generated_text"]
@@ -78,12 +80,12 @@ class HuggingFaceProvider(LLMProvider):
 
 
 class OpenAIProvider(LLMProvider):
-    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None, default_model: Optional[str] = None):
+    def __init__(self, api_key: str | None = None, base_url: str | None = None, default_model: str | None = None):
         self.api_key = api_key or settings.OPENAI_API_KEY
         self.base_url = (base_url or settings.OPENAI_BASE_URL).rstrip("/")
         self.default_model = default_model or settings.OPENAI_MODEL_NAME
 
-    async def generate(self, prompt: str, model: Optional[str] = None, max_tokens: int = 256, temperature: float = 0.7) -> Tuple[str, int, str]:
+    async def generate(self, prompt: str, model: str | None = None, max_tokens: int = 256, temperature: float = 0.7) -> tuple[str, int, str]:
         selected_model = model or self.default_model
         if not self.api_key:
             logger.warning("OPENAI_API_KEY is not configured. Falling back to MockLLMProvider.")
@@ -106,7 +108,7 @@ class OpenAIProvider(LLMProvider):
             if resp.status_code != 200:
                 logger.error(f"OpenAI API error {resp.status_code}: {resp.text}")
                 raise RuntimeError(f"OpenAI API returned status {resp.status_code}: {resp.text}")
-            
+
             data = resp.json()
             out = data["choices"][0]["message"]["content"]
             tokens = data.get("usage", {}).get("total_tokens", len(prompt.split()) + len(out.split()))
@@ -120,13 +122,13 @@ class LLMService:
         self.openai_provider = OpenAIProvider()
 
     async def execute_inference(
-        self, 
-        prompt: str, 
-        provider_name: Optional[str] = None, 
-        model_name: Optional[str] = None,
+        self,
+        prompt: str,
+        provider_name: str | None = None,
+        model_name: str | None = None,
         max_tokens: int = 256,
         temperature: float = 0.7
-    ) -> Tuple[str, int, str, str]:
+    ) -> tuple[str, int, str, str]:
         """
         Executes inference against chosen provider.
         Returns: (output_text, tokens_used, model_name, active_provider)

@@ -1,8 +1,9 @@
-import time
 import json
-import uuid
 import logging
-from typing import Optional, Tuple, List, Dict, Any
+import time
+import uuid
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 import redis
 
@@ -38,7 +39,7 @@ class CachedItem:
     def is_expired(self) -> bool:
         return (time.time() - self.created_at) > self.ttl_seconds
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "entry_id": self.entry_id,
             "prompt": self.prompt,
@@ -52,7 +53,7 @@ class CachedItem:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "CachedItem":
+    def from_dict(cls, data: dict[str, Any]) -> "CachedItem":
         return cls(
             entry_id=data["entry_id"],
             prompt=data["prompt"],
@@ -68,9 +69,9 @@ class CachedItem:
 
 class SemanticCacheManager:
     def __init__(self):
-        self.redis_client: Optional[redis.Redis] = None
+        self.redis_client: redis.Redis | None = None
         self.backend_type = "in_memory"
-        self._memory_store: Dict[str, CachedItem] = {}
+        self._memory_store: dict[str, CachedItem] = {}
         self._hits = 0
         self._misses = 0
         self._init_backend()
@@ -91,11 +92,11 @@ class SemanticCacheManager:
                 raise
 
     def find_similar(
-        self, 
-        prompt: str, 
-        query_vector: np.ndarray, 
-        threshold: Optional[float] = None
-    ) -> Tuple[bool, Optional[CachedItem], float]:
+        self,
+        prompt: str,
+        query_vector: np.ndarray,
+        threshold: float | None = None
+    ) -> tuple[bool, CachedItem | None, float]:
         """
         Scans cached vectors and calculates cosine similarity.
         Returns: (is_hit, matched_item, similarity_score)
@@ -104,7 +105,7 @@ class SemanticCacheManager:
         items = self._get_active_items()
 
         best_score = -1.0
-        best_match: Optional[CachedItem] = None
+        best_match: CachedItem | None = None
 
         for item in items:
             score = embedder_service.cosine_similarity(query_vector, item.vector)
@@ -127,14 +128,14 @@ class SemanticCacheManager:
         provider: str,
         vector: np.ndarray,
         tokens: int,
-        ttl_seconds: Optional[int] = None
+        ttl_seconds: int | None = None
     ) -> CachedItem:
         """
         Stores an inference response alongside its vector embedding and TTL.
         """
         entry_id = str(uuid.uuid4())
         ttl = ttl_seconds if ttl_seconds is not None else settings.DEFAULT_CACHE_TTL_SECONDS
-        
+
         item = CachedItem(
             entry_id=entry_id,
             prompt=prompt,
@@ -155,14 +156,14 @@ class SemanticCacheManager:
                 return item
             except Exception as e:
                 logger.error(f"Failed to write to Redis: {e}. Writing to memory fallback.")
-        
+
         # Memory store fallback
         self._memory_store[entry_id] = item
         return item
 
-    def _get_active_items(self) -> List[CachedItem]:
+    def _get_active_items(self) -> list[CachedItem]:
         active = []
-        now = time.time()
+        time.time()
 
         if self.redis_client:
             try:
@@ -175,7 +176,7 @@ class SemanticCacheManager:
                         active.append(CachedItem.from_dict(json.loads(data)))
                     else:
                         expired_keys.append(entry_id)
-                
+
                 if expired_keys:
                     self.redis_client.srem("nexus:cache:active_keys", *expired_keys)
                 return active
@@ -212,9 +213,9 @@ class SemanticCacheManager:
                 pass
         self._misses += 1
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         active_items = self._get_active_items()
-        
+
         if self.redis_client:
             try:
                 hits = int(self.redis_client.get("nexus:stats:hits") or 0)

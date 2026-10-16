@@ -1,5 +1,6 @@
 import logging
 from typing import List
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -43,7 +44,7 @@ def _lightweight_hash_embedding(text: str, dimension: int = 384) -> np.ndarray:
                 ngram = word[i:i+3]
                 nh = hash(ngram) % dimension
                 vec[nh] += 0.5
-    
+
     norm = np.linalg.norm(vec)
     if norm > 0:
         vec = vec / norm
@@ -65,7 +66,7 @@ class EmbedderService:
                 return emb.astype(np.float32)
             except Exception as e:
                 logger.error(f"Error in SentenceTransformer encode: {e}")
-        
+
         return _lightweight_hash_embedding(text, self.dimension)
 
     @staticmethod

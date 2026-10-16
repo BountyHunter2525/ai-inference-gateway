@@ -1,12 +1,14 @@
-from fastapi import Header, HTTPException, Query, status
 from typing import Optional
+
+from fastapi import Header, HTTPException, Query, status
+
 from app.config import settings
 from app.services.rate_limiter import rate_limiter
 
 
 async def verify_api_key(
-    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
-    api_key_query: Optional[str] = Query(None, alias="api_key")
+    x_api_key: str | None = Header(None, alias="X-API-Key"),
+    api_key_query: str | None = Query(None, alias="api_key")
 ) -> str:
     """
     Validates the provided API key against configured authorized keys.

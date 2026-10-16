@@ -1,6 +1,7 @@
-import time
-from typing import Tuple, Dict, List
 import logging
+import time
+from typing import Dict, List, Tuple
+
 from app.config import settings
 from app.services.semantic_cache import semantic_cache
 
@@ -9,9 +10,9 @@ logger = logging.getLogger(__name__)
 
 class SlidingWindowRateLimiter:
     def __init__(self):
-        self._memory_windows: Dict[str, List[float]] = {}
+        self._memory_windows: dict[str, list[float]] = {}
 
-    def is_allowed(self, identifier: str) -> Tuple[bool, int, int]:
+    def is_allowed(self, identifier: str) -> tuple[bool, int, int]:
         """
         Sliding window rate limit checker.
         Returns: (is_allowed, remaining_requests, retry_after_seconds)
@@ -39,7 +40,7 @@ class SlidingWindowRateLimiter:
                 current_count = results[1]
                 if current_count >= max_requests:
                     return False, 0, int(window_size)
-                
+
                 remaining = max(0, max_requests - (current_count + 1))
                 return True, remaining, 0
             except Exception as e:
@@ -49,7 +50,7 @@ class SlidingWindowRateLimiter:
         timestamps = self._memory_windows.get(identifier, [])
         # Prune old timestamps
         timestamps = [t for t in timestamps if t > window_start]
-        
+
         if len(timestamps) >= max_requests:
             oldest = timestamps[0] if timestamps else now
             retry_after = max(1, int(window_size - (now - oldest)))

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
+
 from app.api.deps import verify_api_key
-from app.schemas.inference import CacheStatsResponse, CacheClearResponse
+from app.schemas.inference import CacheClearResponse, CacheStatsResponse
 from app.services.semantic_cache import semantic_cache
 
 router = APIRouter(prefix="/cache", tags=["Cache Management"])

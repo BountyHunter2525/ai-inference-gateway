@@ -1,5 +1,5 @@
 import re
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
 # Keywords and phrases indicative of real-time or volatile information
 VOLATILE_KEYWORDS = [
@@ -26,7 +26,7 @@ VOLATILE_KEYWORDS = [
 COMPILED_PATTERNS = [re.compile(pattern, re.IGNORECASE) for pattern in VOLATILE_KEYWORDS]
 
 
-def is_volatile_query(prompt: str) -> Tuple[bool, Optional[str]]:
+def is_volatile_query(prompt: str) -> tuple[bool, str | None]:
     """
     Analyzes whether a query requests live, real-time, or continuously mutating data.
     If so, returns True along with the matched keyword or pattern.

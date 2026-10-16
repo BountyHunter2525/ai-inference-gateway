@@ -1,11 +1,13 @@
 import time
+
 from fastapi import APIRouter, Depends, Response
+
 from app.api.deps import verify_api_key
 from app.schemas.inference import InferenceRequest, InferenceResponse
 from app.services.embedder import embedder_service
-from app.services.semantic_cache import semantic_cache
-from app.services.query_classifier import is_volatile_query
 from app.services.llm_provider import llm_service
+from app.services.query_classifier import is_volatile_query
+from app.services.semantic_cache import semantic_cache
 
 router = APIRouter(tags=["Inference"])
 
@@ -24,7 +26,7 @@ async def infer(
     4. On Cache Miss -> Dispatches inference to selected LLM, stores result in cache with TTL.
     """
     start_time = time.time()
-    
+
     # 1. Volatility check (e.g. weather, stock price, live events)
     is_volatile, volatile_reason = is_volatile_query(payload.prompt)
     should_bypass_cache = payload.bypass_cache or is_volatile
@@ -44,7 +46,7 @@ async def infer(
             response.headers["X-Cache"] = "HIT"
             response.headers["X-Cache-Similarity"] = str(similarity)
             response.headers["X-Response-Time-Ms"] = str(elapsed_ms)
-            
+
             return InferenceResponse(
                 prompt=payload.prompt,
                 response=cached_item.response,
@@ -74,7 +76,7 @@ async def infer(
     if not should_bypass_cache:
         if prompt_vector is None:
             prompt_vector = embedder_service.embed_text(payload.prompt)
-            
+
         semantic_cache.store(
             prompt=payload.prompt,
             response=llm_out,

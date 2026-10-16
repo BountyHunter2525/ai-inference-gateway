@@ -1,8 +1,9 @@
 from fastapi import APIRouter
+
 from app.config import settings
 from app.schemas.inference import HealthResponse
-from app.services.semantic_cache import semantic_cache
 from app.services.embedder import _model_failed
+from app.services.semantic_cache import semantic_cache
 
 router = APIRouter(tags=["Health"])
 
