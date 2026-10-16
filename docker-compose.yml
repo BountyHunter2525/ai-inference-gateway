@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: nexus-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  gateway:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nexus-gateway
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DEFAULT_LLM_PROVIDER=mock
+      - API_KEYS=sk-nexus-dev-demo-key
+      - SIMILARITY_THRESHOLD=0.92
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./frontend:/app/frontend
+
+volumes:
+  redis_data:
