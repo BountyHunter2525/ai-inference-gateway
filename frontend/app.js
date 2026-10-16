@@ -158,14 +158,20 @@ function renderCacheEntries(entries) {
     el.cacheEntriesList.innerHTML = '<div class="empty-state">No queries cached yet. Run your first inference!</div>';
     return;
   }
-  el.cacheEntriesList.innerHTML = entries.map(item => `
+  el.cacheEntriesList.innerHTML = entries.map(item => {
+    const cat = item.ttl_category || 'general';
+    const catColor = cat === 'factual' ? '#10b981' : cat === 'technical' ? '#6366f1' : '#9ca3af';
+    return `
     <div class="cache-entry-item">
       <div class="cache-entry-prompt">"${esc(item.prompt)}"</div>
       <div class="cache-entry-meta">
         <span>TTL: ${item.expires_in_seconds}s</span>
+        <span style="color:${catColor}">● ${cat}</span>
+        <span>Hits: ${item.access_count || 0}</span>
         <span>ID: ${item.id.slice(0, 8)}…</span>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function esc(str) {
@@ -232,7 +238,8 @@ function displayResult(data) {
     el.cacheBadge.textContent = 'CACHE HIT';
   } else {
     el.cacheBadge.classList.add('miss');
-    el.cacheBadge.textContent = 'CACHE MISS';
+    const cat = data.ttl_category || 'general';
+    el.cacheBadge.textContent = `CACHE MISS · ${cat.toUpperCase()} TTL`;
   }
 }
 
@@ -429,16 +436,7 @@ async function refreshMonitoring() {
     el.embedP50.textContent     = fmtSeconds(embedP50val);
 
     /* ── Gateway health (read from cache stats) ── */
-    try {
-      const statsRes = await fetch(`${API_BASE}/api/v1/cache/stats`, {
-        headers: { 'X-API-Key': el.apiKey.value.trim() },
-      });
-      if (statsRes.ok) {
-        const stats = await statsRes.json();
-        el.monStorageBackend.textContent = (stats.storage_backend || '—').toUpperCase();
-        el.cacheEntriesGauge.textContent = stats.total_entries;
-      }
-    } catch { /* non-critical */ }
+    // (handled in Option 3 block below with full stats fetch)
 
     /* ── Total requests & errors ── */
     const totalReqs  = sumMetric(parsed, 'nexusai_inference_requests_total');
@@ -503,6 +501,44 @@ async function refreshMonitoring() {
     el.rateLimitPct.textContent      = `${passPct}%`;
     el.rateLimitFill.style.width     = `${passPct}%`;
 
+    /* ── Option 3: Advanced Cache Management metrics ── */
+    const evictions    = sumMetric(parsed, 'nexusai_cache_evictions_total');
+    const warmupEntries = sumMetric(parsed, 'nexusai_cache_warmup_entries_total');
+    const warmupRuns   = sumMetric(parsed, 'nexusai_cache_warmup_runs_total');
+
+    const monEvictions     = document.getElementById('monEvictions');
+    const monWarmupEntries = document.getElementById('monWarmupEntries');
+    const monWarmupRuns    = document.getElementById('monWarmupRuns');
+    const monCapacityPct   = document.getElementById('monCapacityPct');
+    const monCapacitySub   = document.getElementById('monCapacitySub');
+
+    if (monEvictions)     monEvictions.textContent     = fmtNum(evictions);
+    if (monWarmupEntries) monWarmupEntries.textContent  = fmtNum(warmupEntries);
+    if (monWarmupRuns)    monWarmupRuns.textContent     = `${fmtNum(warmupRuns)} runs total`;
+
+    // Capacity gauge from cache stats
+    try {
+      const statsRes = await fetch(`${API_BASE}/api/v1/cache/stats`, {
+        headers: { 'X-API-Key': el.apiKey.value.trim() },
+      });
+      if (statsRes.ok) {
+        const stats = await statsRes.json();
+        el.monStorageBackend.textContent = (stats.storage_backend || '—').toUpperCase();
+        el.cacheEntriesGauge.textContent = stats.total_entries;
+
+        const maxEntries = stats.max_entries || 500;
+        const pct = maxEntries > 0 ? ((stats.total_entries / maxEntries) * 100).toFixed(1) : 0;
+        if (monCapacityPct)  monCapacityPct.textContent  = `${pct}%`;
+        if (monCapacitySub)  monCapacitySub.textContent  = `${stats.total_entries} of ${maxEntries} max`;
+
+        // TTL category breakdown
+        renderTTLBreakdown(stats.ttl_category_counts || {}, stats.total_entries);
+
+        // Top accessed entries
+        renderTopEntries((stats.entries || []).slice(0, 5));
+      }
+    } catch { /* non-critical */ }
+
     /* ── Timestamp ── */
     el.lastRefreshLabel.textContent = `Last refresh: ${new Date().toLocaleTimeString()}`;
 
@@ -524,6 +560,96 @@ function applyMetricsFilter() {
 
 el.metricsFilter?.addEventListener('input', applyMetricsFilter);
 el.refreshMetricsBtn?.addEventListener('click', refreshMonitoring);
+
+/* ════════════════════════════════════════════
+   Option 3: TTL breakdown + Top entries renderers
+════════════════════════════════════════════ */
+
+const TTL_COLORS = { factual: '#10b981', technical: '#6366f1', general: '#9ca3af' };
+const TTL_LABELS = { factual: 'Factual (24h)', technical: 'Technical (6h)', general: 'General (1h)' };
+
+function renderTTLBreakdown(counts, total) {
+  const el2 = document.getElementById('ttlBreakdown');
+  if (!el2) return;
+  if (!total || Object.keys(counts).length === 0) {
+    el2.innerHTML = '<div class="empty-state">No entries cached yet.</div>';
+    return;
+  }
+  el2.innerHTML = Object.entries(TTL_LABELS).map(([key, label]) => {
+    const count = counts[key] || 0;
+    const pct   = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+    const color = TTL_COLORS[key];
+    return `
+      <div class="ttl-row">
+        <div class="ttl-row-header">
+          <span class="ttl-dot" style="background:${color}"></span>
+          <span class="ttl-name">${label}</span>
+          <span class="ttl-count">${count}</span>
+        </div>
+        <div class="ttl-bar-track">
+          <div class="ttl-bar-fill" style="width:${pct}%;background:${color}"></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderTopEntries(entries) {
+  const el2 = document.getElementById('topEntriesList');
+  if (!el2) return;
+  if (!entries || entries.length === 0) {
+    el2.innerHTML = '<div class="empty-state">No entries cached yet.</div>';
+    return;
+  }
+  el2.innerHTML = entries.map((item, i) => {
+    const cat   = item.ttl_category || 'general';
+    const color = TTL_COLORS[cat] || '#9ca3af';
+    return `
+      <div class="top-entry-item">
+        <div class="top-entry-rank">#${i + 1}</div>
+        <div class="top-entry-body">
+          <div class="top-entry-prompt">"${esc(item.prompt)}"</div>
+          <div class="top-entry-meta">
+            <span style="color:${color}">● ${cat}</span>
+            <span class="top-entry-hits">⚡ ${item.access_count} hits</span>
+            <span>TTL ${item.expires_in_seconds}s left</span>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ── Warm-up button ── */
+const warmBtn = document.getElementById('warmCacheBtn');
+const warmStatus = document.getElementById('warmStatus');
+
+warmBtn?.addEventListener('click', async () => {
+  warmBtn.disabled = true;
+  warmBtn.textContent = '⏳ Warming…';
+  if (warmStatus) warmStatus.textContent = '';
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/cache/warm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': el.apiKey.value.trim() },
+      body: JSON.stringify({ provider: 'mock', model: 'nexus-mock-v1' }),
+    });
+    const data = await res.json();
+    if (warmStatus) {
+      warmStatus.textContent = res.ok
+        ? `✓ Stored ${data.stored} entries in ${data.elapsed_ms} ms`
+        : `✗ ${data.detail || 'Warm-up failed'}`;
+      warmStatus.style.color = res.ok ? '#10b981' : '#ef4444';
+    }
+    if (res.ok) {
+      await refreshCacheStats();
+      await refreshMonitoring();
+    }
+  } catch (err) {
+    if (warmStatus) { warmStatus.textContent = `✗ ${err.message}`; warmStatus.style.color = '#ef4444'; }
+  } finally {
+    warmBtn.disabled = false;
+    warmBtn.textContent = '⚡ Run Warm-up';
+  }
+});
 
 /* ════════════════════════════════════════════
    Polling — every 6 s

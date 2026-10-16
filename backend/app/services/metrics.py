@@ -123,6 +123,43 @@ VOLATILE_QUERIES_TOTAL = Counter(
 )
 
 # ---------------------------------------------------------------------------
+# Advanced cache management metrics (Option 3)
+# ---------------------------------------------------------------------------
+
+CACHE_EVICTIONS_TOTAL = Counter(
+    "nexusai_cache_evictions_total",
+    "Cache entries evicted by the LRU policy when max-entries limit is reached.",
+)
+
+CACHE_WARMUP_ENTRIES_TOTAL = Counter(
+    "nexusai_cache_warmup_entries_total",
+    "Total entries successfully loaded into cache during a warm-up run.",
+)
+
+CACHE_WARMUP_RUNS_TOTAL = Counter(
+    "nexusai_cache_warmup_runs_total",
+    "Total number of cache warm-up operations triggered (startup + manual).",
+)
+
+CACHE_TTL_ASSIGNED = Histogram(
+    "nexusai_cache_ttl_assigned_seconds",
+    "Distribution of TTL values assigned to new cache entries by the adaptive policy.",
+    buckets=(3600, 7200, 10800, 21600, 43200, 86400),
+)
+
+CACHE_TTL_CATEGORY_TOTAL = Counter(
+    "nexusai_cache_ttl_category_total",
+    "Cache entries stored per adaptive TTL category.",
+    ["category"],   # "factual" | "technical" | "general"
+)
+
+CACHE_ACCESS_COUNT = Histogram(
+    "nexusai_cache_entry_access_count",
+    "Access-count distribution across all active cache entries (sampled on stats call).",
+    buckets=(1, 2, 5, 10, 25, 50, 100, 250),
+)
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 

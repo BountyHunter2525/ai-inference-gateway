@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 
 from app.api.deps import verify_api_key
 from app.schemas.inference import InferenceRequest, InferenceResponse
+from app.services.cache_ttl_policy import ttl_policy
 from app.services.embedder import embedder_service
 from app.services.llm_provider import llm_service
 from app.services.metrics import (
@@ -27,27 +28,28 @@ async def infer(
 ):
     """
     Main AI Inference Gateway Endpoint.
-    1. Checks if query contains real-time/volatile parameters (bypasses cache).
-    2. Checks Semantic Cache for existing vectors with cosine similarity >= threshold.
-    3. On Cache Hit  → Returns cached response immediately with near-zero latency.
-    4. On Cache Miss → Dispatches inference to selected LLM, stores result in cache with TTL.
+
+    Pipeline:
+    1. Volatility check — real-time queries bypass cache entirely.
+    2. Semantic cache lookup — cosine similarity >= threshold → instant HIT.
+    3. LLM dispatch — cache MISS routes to the configured provider.
+    4. Adaptive TTL — new entries receive a TTL based on query category
+       (factual 24 h, technical 6 h, general 1 h).
+    5. Cache store — response + vector persisted with LRU eviction guard.
     """
     start_time = time.time()
-
-    # Derive the active provider label early (for metric labels on error paths)
     provider_label = (payload.provider or "mock").lower()
 
     try:
-        # 1. Volatility check (e.g. weather, stock price, live events)
-        is_volatile, volatile_reason = is_volatile_query(payload.prompt)
+        # ── 1. Volatility check ───────────────────────────────────────────────
+        is_volatile, _ = is_volatile_query(payload.prompt)
         if is_volatile:
             VOLATILE_QUERIES_TOTAL.inc()
 
         should_bypass_cache = payload.bypass_cache or is_volatile
-
         prompt_vector = None
 
-        # 2. Check Semantic Cache if not bypassed
+        # ── 2. Semantic cache lookup ──────────────────────────────────────────
         if not should_bypass_cache:
             prompt_vector = embedder_service.embed_text(payload.prompt)
             is_hit, cached_item, similarity = semantic_cache.find_similar(
@@ -59,7 +61,6 @@ async def infer(
                 elapsed_s = time.time() - start_time
                 elapsed_ms = round(elapsed_s * 1000, 2)
 
-                # --- Prometheus ---
                 INFERENCE_REQUESTS_TOTAL.labels(
                     provider=cached_item.provider, cache_result="hit"
                 ).inc()
@@ -70,6 +71,7 @@ async def infer(
                 response.headers["X-Cache"] = "HIT"
                 response.headers["X-Cache-Similarity"] = str(similarity)
                 response.headers["X-Response-Time-Ms"] = str(elapsed_ms)
+                response.headers["X-TTL-Category"] = cached_item.ttl_category
 
                 return InferenceResponse(
                     prompt=payload.prompt,
@@ -81,9 +83,10 @@ async def infer(
                     latency_ms=elapsed_ms,
                     tokens_used=cached_item.tokens,
                     bypassed_due_to_volatility=False,
+                    ttl_category=cached_item.ttl_category,
                 )
 
-        # 3. Cache Miss or Bypassed → Call LLM Provider
+        # ── 3. LLM dispatch ───────────────────────────────────────────────────
         llm_out, tokens, model_used, provider_used = await llm_service.execute_inference(
             prompt=payload.prompt,
             provider_name=payload.provider,
@@ -94,10 +97,8 @@ async def infer(
 
         elapsed_s = time.time() - start_time
         elapsed_ms = round(elapsed_s * 1000, 2)
-
         cache_result = "volatile_bypass" if is_volatile else "miss"
 
-        # --- Prometheus ---
         INFERENCE_REQUESTS_TOTAL.labels(provider=provider_used, cache_result=cache_result).inc()
         INFERENCE_LATENCY_SECONDS.labels(provider=provider_used, cache_result=cache_result).observe(elapsed_s)
         INFERENCE_TOKENS_TOTAL.labels(provider=provider_used).inc(tokens)
@@ -105,10 +106,22 @@ async def infer(
         response.headers["X-Cache"] = "MISS"
         response.headers["X-Response-Time-Ms"] = str(elapsed_ms)
 
-        # 4. Store in Semantic Cache if eligible
+        # ── 4 & 5. Adaptive TTL + cache store ─────────────────────────────────
+        ttl_category = "general"
         if not should_bypass_cache:
             if prompt_vector is None:
                 prompt_vector = embedder_service.embed_text(payload.prompt)
+
+            # Respect explicit custom_ttl_seconds; otherwise use adaptive policy
+            if payload.custom_ttl_seconds:
+                ttl_seconds = payload.custom_ttl_seconds
+                ttl_category = ttl_policy.category_label(payload.prompt)
+            else:
+                decision = ttl_policy.decide(payload.prompt)
+                ttl_seconds = decision.ttl_seconds
+                ttl_category = decision.category
+
+            response.headers["X-TTL-Category"] = ttl_category
 
             semantic_cache.store(
                 prompt=payload.prompt,
@@ -117,7 +130,8 @@ async def infer(
                 provider=provider_used,
                 vector=prompt_vector,
                 tokens=tokens,
-                ttl_seconds=payload.custom_ttl_seconds,
+                ttl_seconds=ttl_seconds,
+                ttl_category=ttl_category,
             )
 
         return InferenceResponse(
@@ -130,11 +144,10 @@ async def infer(
             latency_ms=elapsed_ms,
             tokens_used=tokens,
             bypassed_due_to_volatility=is_volatile,
+            ttl_category=ttl_category if not is_volatile else None,
         )
 
     except HTTPException:
-        # Re-raise FastAPI HTTP exceptions (rate limit, auth) without recording
-        # them as inference errors — they are handled at the deps layer.
         raise
     except Exception as exc:
         INFERENCE_ERRORS_TOTAL.labels(

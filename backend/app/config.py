@@ -31,6 +31,32 @@ class Settings(BaseSettings):
     SIMILARITY_THRESHOLD: float = 0.92
     DEFAULT_CACHE_TTL_SECONDS: int = 3600  # 1 hour
 
+    # Advanced Cache Management (Option 3)
+    CACHE_MAX_ENTRIES: int = 500          # LRU eviction kicks in above this limit
+    CACHE_WARMING_ENABLED: bool = True    # Run seed-query warmer on startup
+    # Pipe-separated seed prompts for cache warming. Set to "" to disable.
+    CACHE_WARM_QUERIES: str = (
+        "What is the capital of France?|"
+        "Explain how TCP/IP works|"
+        "What is machine learning?|"
+        "How does the internet work?|"
+        "What is a neural network?|"
+        "Explain the OSI model|"
+        "What is REST API?|"
+        "How does HTTPS work?|"
+        "What is Docker?|"
+        "Explain microservices architecture"
+    )
+
+    # Adaptive TTL windows (seconds) per query category
+    CACHE_TTL_FACTUAL: int = 86400        # 24 h  — stable facts, definitions
+    CACHE_TTL_TECHNICAL: int = 21600      # 6 h   — code, how-to, architecture
+    CACHE_TTL_GENERAL: int = 3600         # 1 h   — everything else
+
+    @property
+    def warm_queries_list(self) -> list[str]:
+        return [q.strip() for q in self.CACHE_WARM_QUERIES.split("|") if q.strip()]
+
     # Rate Limiting
     RATE_LIMIT_MAX_REQUESTS: int = 30
     RATE_LIMIT_WINDOW_SECONDS: int = 60

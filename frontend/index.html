@@ -264,7 +264,52 @@
         </div>
       </div>
 
-      <!-- ── Row 4: Cache similarity + rate limit ── -->
+      <!-- ── Row 4: Advanced Cache Management (Option 3) ── -->
+      <div class="mon-section-label">Advanced Cache Management</div>
+      <div class="mon-grid mon-grid-4">
+        <div class="mon-card mon-card-accent-cyan">
+          <div class="mon-card-title">Evictions (LRU)</div>
+          <div class="mon-big-value" id="monEvictions">—</div>
+          <div class="mon-sub">entries removed</div>
+        </div>
+        <div class="mon-card mon-card-accent-green">
+          <div class="mon-card-title">Warm-up Entries</div>
+          <div class="mon-big-value" id="monWarmupEntries">—</div>
+          <div class="mon-sub" id="monWarmupRuns">— runs total</div>
+        </div>
+        <div class="mon-card mon-card-accent-indigo">
+          <div class="mon-card-title">Cache Capacity</div>
+          <div class="mon-big-value" id="monCapacityPct">—</div>
+          <div class="mon-sub" id="monCapacitySub">of 500 max entries</div>
+        </div>
+        <div class="mon-card mon-card-accent-amber">
+          <div class="mon-card-title">Warm Cache</div>
+          <div style="margin-top:10px">
+            <button id="warmCacheBtn" class="btn btn-sm btn-warm">⚡ Run Warm-up</button>
+            <div class="warm-status" id="warmStatus"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Row 5: TTL category breakdown + top-accessed entries ── -->
+      <div class="mon-grid mon-grid-2">
+        <div class="mon-card">
+          <div class="mon-card-title">Adaptive TTL Categories</div>
+          <p class="mon-card-desc">Distribution of entries by stability tier</p>
+          <div class="ttl-breakdown" id="ttlBreakdown">
+            <div class="empty-state">No entries cached yet.</div>
+          </div>
+        </div>
+        <div class="mon-card">
+          <div class="mon-card-title">Top Accessed Entries</div>
+          <p class="mon-card-desc">Most-served cache entries ranked by hit count</p>
+          <div class="top-entries-list" id="topEntriesList">
+            <div class="empty-state">No entries cached yet.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Row 6: Cache similarity + rate limit ── -->
       <div class="mon-grid mon-grid-2" style="margin-top:0">
         <div class="mon-card">
           <div class="mon-card-title">Similarity Score Distribution</div>
@@ -307,7 +352,7 @@
         </div>
       </div>
 
-      <!-- ── Row 5: Raw Prometheus scrape ── -->
+      <!-- ── Row 7: Raw Prometheus scrape ── -->
       <div class="mon-section-label">Raw Prometheus Output
         <a href="/api/v1/metrics" target="_blank" class="raw-link">open /api/v1/metrics ↗</a>
       </div>
