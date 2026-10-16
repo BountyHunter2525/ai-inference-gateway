@@ -1,6 +1,6 @@
 import time
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from app.api.deps import verify_api_key
 from app.schemas.inference import InferenceRequest, InferenceResponse
@@ -23,6 +23,7 @@ router = APIRouter(tags=["Inference"])
 @router.post("/infer", response_model=InferenceResponse)
 async def infer(
     payload: InferenceRequest,
+    request: Request,
     response: Response,
     api_key: str = Depends(verify_api_key),
 ):
@@ -68,6 +69,16 @@ async def infer(
                     provider=cached_item.provider, cache_result="hit"
                 ).observe(elapsed_s)
 
+                # Enterprise: record usage + per-tenant metric
+                tenant_id = getattr(request.state, "tenant_id", "default") if hasattr(request, "state") else "default"
+                try:
+                    from app.services.key_store import key_store as _ks   # noqa: PLC0415
+                    from app.services.metrics import ENTERPRISE_REQUESTS_BY_TENANT  # noqa: PLC0415
+                    _ks.record_usage(api_key, tokens=cached_item.tokens)
+                    ENTERPRISE_REQUESTS_BY_TENANT.labels(tenant_id=tenant_id, cache_result="hit").inc()
+                except Exception:
+                    pass
+
                 response.headers["X-Cache"] = "HIT"
                 response.headers["X-Cache-Similarity"] = str(similarity)
                 response.headers["X-Response-Time-Ms"] = str(elapsed_ms)
@@ -84,6 +95,7 @@ async def infer(
                     tokens_used=cached_item.tokens,
                     bypassed_due_to_volatility=False,
                     ttl_category=cached_item.ttl_category,
+                    tenant_id=tenant_id,
                 )
 
         # ── 3. LLM dispatch ───────────────────────────────────────────────────
@@ -102,6 +114,16 @@ async def infer(
         INFERENCE_REQUESTS_TOTAL.labels(provider=provider_used, cache_result=cache_result).inc()
         INFERENCE_LATENCY_SECONDS.labels(provider=provider_used, cache_result=cache_result).observe(elapsed_s)
         INFERENCE_TOKENS_TOTAL.labels(provider=provider_used).inc(tokens)
+
+        # Enterprise: record usage + per-tenant metric
+        tenant_id = getattr(request.state, "tenant_id", "default") if hasattr(request, "state") else "default"
+        try:
+            from app.services.key_store import key_store as _ks   # noqa: PLC0415
+            from app.services.metrics import ENTERPRISE_REQUESTS_BY_TENANT  # noqa: PLC0415
+            _ks.record_usage(api_key, tokens=tokens)
+            ENTERPRISE_REQUESTS_BY_TENANT.labels(tenant_id=tenant_id, cache_result=cache_result).inc()
+        except Exception:
+            pass
 
         response.headers["X-Cache"] = "MISS"
         response.headers["X-Response-Time-Ms"] = str(elapsed_ms)
@@ -145,6 +167,7 @@ async def infer(
             tokens_used=tokens,
             bypassed_due_to_volatility=is_volatile,
             ttl_category=ttl_category if not is_volatile else None,
+            tenant_id=tenant_id,
         )
 
     except HTTPException:

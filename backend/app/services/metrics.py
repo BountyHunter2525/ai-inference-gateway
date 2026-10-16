@@ -160,6 +160,51 @@ CACHE_ACCESS_COUNT = Histogram(
 )
 
 # ---------------------------------------------------------------------------
+# Enterprise metrics (Option 4)
+# ---------------------------------------------------------------------------
+
+ENTERPRISE_ACTIVE_KEYS_GAUGE = Gauge(
+    "nexusai_enterprise_active_keys",
+    "Number of currently active API keys in the key store.",
+)
+
+ENTERPRISE_QUOTA_REQUESTS_USED = Gauge(
+    "nexusai_enterprise_quota_requests_used",
+    "Daily request usage as a fraction of quota (0.0–1.0) per tenant.",
+    ["tenant_id"],
+)
+
+ENTERPRISE_QUOTA_TOKENS_USED = Gauge(
+    "nexusai_enterprise_quota_tokens_used",
+    "Daily token usage as a fraction of quota (0.0–1.0) per tenant.",
+    ["tenant_id"],
+)
+
+ENTERPRISE_QUOTA_EXCEEDED_TOTAL = Counter(
+    "nexusai_enterprise_quota_exceeded_total",
+    "Requests rejected because the daily quota was exhausted.",
+    ["tenant_id"],
+)
+
+ENTERPRISE_AUDIT_EVENTS_TOTAL = Counter(
+    "nexusai_enterprise_audit_events_total",
+    "Total audit log events recorded.",
+    ["event_type"],
+)
+
+ENTERPRISE_AUTH_FAILURES_TOTAL = Counter(
+    "nexusai_enterprise_auth_failures_total",
+    "Authentication failures (missing or invalid API key).",
+    ["reason"],   # "missing" | "invalid" | "revoked"
+)
+
+ENTERPRISE_REQUESTS_BY_TENANT = Counter(
+    "nexusai_enterprise_requests_by_tenant_total",
+    "Inference requests broken down by tenant_id.",
+    ["tenant_id", "cache_result"],
+)
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 

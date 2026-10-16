@@ -37,6 +37,9 @@
       <button class="tab-btn" data-tab="monitoring">
         <span class="tab-icon">📊</span> Monitoring
       </button>
+      <button class="tab-btn" data-tab="admin">
+        <span class="tab-icon">🔑</span> Admin
+      </button>
     </nav>
 
     <!-- ═══════════════════════════════════════════════════
@@ -364,6 +367,107 @@
       </div>
 
     </div><!-- end tab-monitoring -->
+
+    <!-- ═══════════════════════════════════════════════════
+         TAB 3 — ADMIN PANEL
+    ═══════════════════════════════════════════════════ -->
+    <div id="tab-admin" class="tab-content">
+      <div class="monitoring-header">
+        <div>
+          <h2 class="monitoring-title">API Key Management & Audit Log</h2>
+          <p class="section-desc">Enterprise admin panel — create, monitor, and revoke API keys. Review audit trail.</p>
+        </div>
+        <div class="monitoring-controls">
+          <button id="refreshAdminBtn" class="btn btn-sm btn-outline">↻ Refresh</button>
+        </div>
+      </div>
+
+      <!-- ── Row 1: Dashboard Stats ── -->
+      <div class="mon-section-label">Dashboard Overview</div>
+      <div class="mon-grid mon-grid-4">
+        <div class="mon-card mon-card-accent-cyan">
+          <div class="mon-card-title">Active Keys</div>
+          <div class="mon-big-value" id="adminTotalKeys">—</div>
+          <div class="mon-sub">API keys in system</div>
+        </div>
+        <div class="mon-card mon-card-accent-green">
+          <div class="mon-card-title">Tenants</div>
+          <div class="mon-big-value" id="adminTotalTenants">—</div>
+          <div class="mon-sub">unique tenants</div>
+        </div>
+        <div class="mon-card mon-card-accent-purple">
+          <div class="mon-card-title">Audit Events</div>
+          <div class="mon-big-value" id="adminAuditEvents">—</div>
+          <div class="mon-sub">events today</div>
+        </div>
+        <div class="mon-card mon-card-accent-amber">
+          <div class="mon-card-title">Admin Key</div>
+          <div style="margin-top:10px">
+            <input type="password" id="adminApiKey" placeholder="Enter admin API key" style="font-size:12px;padding:8px">
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Row 2: Create New Key Form ── -->
+      <div class="mon-section-label">Create New API Key</div>
+      <div class="admin-create-section">
+        <div class="admin-form-grid">
+          <div class="form-group">
+            <label for="newKeyName">Key Name *</label>
+            <input type="text" id="newKeyName" placeholder="e.g., Production App">
+          </div>
+          <div class="form-group">
+            <label for="newKeyRole">Role *</label>
+            <select id="newKeyRole">
+              <option value="user" selected>user</option>
+              <option value="admin">admin</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="newKeyTenant">Tenant ID</label>
+            <input type="text" id="newKeyTenant" placeholder="e.g., acme-corp">
+          </div>
+          <div class="form-group">
+            <label for="newKeyQuotaReq">Request Quota (daily)</label>
+            <input type="number" id="newKeyQuotaReq" placeholder="1000" min="0">
+          </div>
+          <div class="form-group">
+            <label for="newKeyQuotaToken">Token Quota (daily)</label>
+            <input type="number" id="newKeyQuotaToken" placeholder="100000" min="0">
+          </div>
+          <div class="form-group">
+            <label for="newKeyDesc">Description</label>
+            <input type="text" id="newKeyDesc" placeholder="Optional description">
+          </div>
+        </div>
+        <button id="createKeyBtn" class="btn btn-primary">🔑 Create API Key</button>
+        <div id="createKeyResult" class="admin-result-box hidden"></div>
+      </div>
+
+      <!-- ── Row 3: Active API Keys List ── -->
+      <div class="mon-section-label">Active API Keys</div>
+      <div class="admin-keys-container">
+        <div id="adminKeysList" class="admin-keys-list">
+          <div class="empty-state">No keys loaded. Enter admin key and click Refresh.</div>
+        </div>
+      </div>
+
+      <!-- ── Row 4: Audit Log ── -->
+      <div class="mon-section-label">Audit Log
+        <button id="clearAuditBtn" class="btn btn-sm btn-danger" style="margin-left:auto">Clear Audit Log</button>
+      </div>
+      <div class="admin-audit-container">
+        <div class="admin-audit-filters">
+          <input type="text" id="auditFilterTenant" placeholder="Filter by tenant…" class="audit-filter-input">
+          <input type="text" id="auditFilterEvent" placeholder="Filter by event type…" class="audit-filter-input">
+          <button id="applyAuditFilters" class="btn btn-sm btn-outline">Apply Filters</button>
+        </div>
+        <div id="adminAuditList" class="admin-audit-list">
+          <div class="empty-state">No audit entries loaded.</div>
+        </div>
+      </div>
+
+    </div><!-- end tab-admin -->
   </div><!-- end app-container -->
 
   <script src="app.js"></script>

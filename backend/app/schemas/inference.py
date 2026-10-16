@@ -4,6 +4,10 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Inference
+# ─────────────────────────────────────────────────────────────────────────────
+
 class InferenceRequest(BaseModel):
     prompt: str = Field(..., min_length=1, description="The input prompt for the AI model")
     model: str | None = Field(None, description="Model identifier override")
@@ -24,9 +28,14 @@ class InferenceResponse(BaseModel):
     latency_ms: float
     tokens_used: int
     bypassed_due_to_volatility: bool = False
-    ttl_category: str | None = None          # "factual" | "technical" | "general" | None on hit
+    ttl_category: str | None = None
+    tenant_id: str | None = None
     timestamp: float = Field(default_factory=time.time)
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Cache
+# ─────────────────────────────────────────────────────────────────────────────
 
 class CacheEntryInfo(BaseModel):
     id: str
@@ -34,9 +43,9 @@ class CacheEntryInfo(BaseModel):
     response_preview: str
     created_at: float
     expires_in_seconds: float
-    ttl_category: str = "general"            # adaptive TTL category
-    access_count: int = 0                    # how many times this entry was served
-    last_accessed: float | None = None       # unix timestamp of last cache hit
+    ttl_category: str = "general"
+    access_count: int = 0
+    last_accessed: float | None = None
 
 
 class CacheStatsResponse(BaseModel):
@@ -47,7 +56,7 @@ class CacheStatsResponse(BaseModel):
     storage_backend: str
     max_entries: int = 500
     entries: list[CacheEntryInfo] = []
-    ttl_category_counts: dict[str, int] = {}  # {"factual": 3, "technical": 5, ...}
+    ttl_category_counts: dict[str, int] = {}
 
 
 class CacheClearResponse(BaseModel):
@@ -56,16 +65,10 @@ class CacheClearResponse(BaseModel):
     message: str
 
 
-# ── New Option-3 response schemas ─────────────────────────────────────────────
-
 class CacheWarmRequest(BaseModel):
-    """Body for POST /cache/warm — optionally supply custom seed prompts."""
-    queries: list[str] | None = Field(
-        None,
-        description="Custom prompts to warm. Defaults to the server-configured seed list.",
-    )
-    provider: str = Field("mock", description="Provider to use for generating responses.")
-    model: str = Field("nexus-mock-v1", description="Model name tag.")
+    queries: list[str] | None = Field(None)
+    provider: str = Field("mock")
+    model: str = Field("nexus-mock-v1")
 
 
 class CacheWarmResponse(BaseModel):
@@ -97,9 +100,79 @@ class CacheInspectResponse(BaseModel):
     tokens: int
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Health
+# ─────────────────────────────────────────────────────────────────────────────
+
 class HealthResponse(BaseModel):
     status: str
     version: str
     backend_storage: str
     default_provider: str
     embedder_ready: bool
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Enterprise — Option 4
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ApiKeyCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, description="Human-readable label for this key")
+    role: str = Field("user", description="Role: 'user' | 'admin' | 'readonly'")
+    tenant_id: str = Field("default", description="Tenant namespace for cache isolation")
+    quota_requests: int | None = Field(None, description="Daily request quota (None = use default)")
+    quota_tokens: int | None = Field(None, description="Daily token quota (None = use default)")
+    description: str = Field("", description="Optional description")
+
+
+class ApiKeyResponse(BaseModel):
+    key: str
+    name: str
+    role: str
+    tenant_id: str
+    quota_requests: int
+    quota_tokens: int
+    description: str
+    created_at: float
+    is_active: bool
+
+
+class ApiKeyUsage(BaseModel):
+    key_preview: str        # first 16 chars + "…"
+    name: str
+    tenant_id: str
+    role: str
+    requests_used: int
+    requests_limit: int     # 0 = unlimited
+    requests_remaining: int # -1 = unlimited
+    tokens_used: int
+    tokens_limit: int
+    tokens_remaining: int
+    quota_pct_requests: float   # 0.0–100.0
+    quota_pct_tokens: float
+    is_active: bool
+
+
+class AuditLogEntry(BaseModel):
+    event_id: str
+    timestamp: float
+    event_type: str
+    api_key: str        # masked
+    tenant_id: str
+    endpoint: str
+    method: str
+    status_code: int
+    detail: str
+    latency_ms: float | None = None
+
+
+class AuditLogResponse(BaseModel):
+    entries: list[AuditLogEntry]
+    total_returned: int
+
+
+class AdminStatsResponse(BaseModel):
+    total_active_keys: int
+    total_tenants: int
+    audit_events_today: int
+    keys: list[ApiKeyUsage]

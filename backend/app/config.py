@@ -23,6 +23,18 @@ class Settings(BaseSettings):
     # Security & Auth
     API_KEYS: str = "sk-nexus-dev-demo-key,sk-test-client-123"
 
+    # Enterprise — Admin & Quota (Option 4)
+    # Master key required for all /admin/* endpoints
+    ADMIN_API_KEY: str = "sk-nexus-admin-master-key"
+    # Default daily request quota per API key (0 = unlimited)
+    QUOTA_DAILY_REQUESTS: int = 1000
+    # Default daily token quota per API key (0 = unlimited)
+    QUOTA_DAILY_TOKENS: int = 100000
+    # How long audit log entries are retained in Redis (seconds)
+    AUDIT_LOG_TTL_SECONDS: int = 604800   # 7 days
+    # Max audit entries returned per admin query
+    AUDIT_LOG_MAX_ENTRIES: int = 200
+
     # Redis & Storage
     REDIS_URL: str = "redis://localhost:6379/0"
     USE_IN_MEMORY_FALLBACK: bool = True

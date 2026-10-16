@@ -79,6 +79,26 @@ const el = {
   rateLimitFill:     document.getElementById('rateLimitFill'),
   // Cache gauge
   cacheEntriesGauge: document.getElementById('cacheEntriesGauge'),
+  // Admin Panel
+  adminApiKey:       document.getElementById('adminApiKey'),
+  adminTotalKeys:    document.getElementById('adminTotalKeys'),
+  adminTotalTenants: document.getElementById('adminTotalTenants'),
+  adminAuditEvents:  document.getElementById('adminAuditEvents'),
+  newKeyName:        document.getElementById('newKeyName'),
+  newKeyRole:        document.getElementById('newKeyRole'),
+  newKeyTenant:      document.getElementById('newKeyTenant'),
+  newKeyQuotaReq:    document.getElementById('newKeyQuotaReq'),
+  newKeyQuotaToken:  document.getElementById('newKeyQuotaToken'),
+  newKeyDesc:        document.getElementById('newKeyDesc'),
+  createKeyBtn:      document.getElementById('createKeyBtn'),
+  createKeyResult:   document.getElementById('createKeyResult'),
+  adminKeysList:     document.getElementById('adminKeysList'),
+  refreshAdminBtn:   document.getElementById('refreshAdminBtn'),
+  auditFilterTenant: document.getElementById('auditFilterTenant'),
+  auditFilterEvent:  document.getElementById('auditFilterEvent'),
+  applyAuditFilters: document.getElementById('applyAuditFilters'),
+  adminAuditList:    document.getElementById('adminAuditList'),
+  clearAuditBtn:     document.getElementById('clearAuditBtn'),
 };
 
 /* ════════════════════════════════════════════
@@ -91,6 +111,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
     if (btn.dataset.tab === 'monitoring') refreshMonitoring();
+    if (btn.dataset.tab === 'admin') refreshAdminPanel();
   });
 });
 
@@ -650,6 +671,306 @@ warmBtn?.addEventListener('click', async () => {
     warmBtn.textContent = '⚡ Run Warm-up';
   }
 });
+
+/* ════════════════════════════════════════════
+   ───────── ADMIN PANEL ──────────
+════════════════════════════════════════════ */
+
+/* ── Refresh admin dashboard ── */
+async function refreshAdminPanel() {
+  const adminKey = el.adminApiKey.value.trim();
+  if (!adminKey) {
+    alert('Please enter an admin API key.');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/admin/stats`, {
+      headers: { 'X-API-Key': adminKey },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || 'Failed to load admin stats');
+    }
+    const data = await res.json();
+
+    // Update dashboard stats
+    el.adminTotalKeys.textContent    = data.total_active_keys || 0;
+    el.adminTotalTenants.textContent = data.total_tenants || 0;
+    el.adminAuditEvents.textContent  = data.audit_events_today || 0;
+
+    // Render keys list
+    renderAdminKeys(data.keys || []);
+
+    // Load audit log
+    await refreshAuditLog();
+  } catch (err) {
+    alert(`Admin panel error: ${err.message}`);
+  }
+}
+
+/* ── Render API keys table ── */
+function renderAdminKeys(keys) {
+  if (!keys || keys.length === 0) {
+    el.adminKeysList.innerHTML = '<div class="empty-state">No API keys found.</div>';
+    return;
+  }
+
+  el.adminKeysList.innerHTML = keys.map(key => {
+    const reqPct = key.quota_pct_requests || 0;
+    const tokPct = key.quota_pct_tokens || 0;
+    const statusColor = key.is_active ? '#10b981' : '#ef4444';
+    const statusLabel = key.is_active ? 'Active' : 'Revoked';
+
+    return `
+      <div class="admin-key-card">
+        <div class="admin-key-header">
+          <div class="admin-key-name">${esc(key.name)}</div>
+          <div class="admin-key-status" style="color:${statusColor}">● ${statusLabel}</div>
+        </div>
+        <div class="admin-key-meta">
+          <span>Key: <code>${esc(key.key_preview)}</code></span>
+          <span>Role: <strong>${esc(key.role)}</strong></span>
+          <span>Tenant: ${esc(key.tenant_id || 'default')}</span>
+        </div>
+        <div class="admin-quota-section">
+          <div class="admin-quota-item">
+            <div class="admin-quota-label">Requests: ${key.requests_used} / ${key.requests_limit || '∞'}</div>
+            <div class="admin-quota-bar-track">
+              <div class="admin-quota-bar-fill admin-quota-bar-requests" style="width:${Math.min(100, reqPct)}%"></div>
+            </div>
+            <div class="admin-quota-pct">${reqPct.toFixed(1)}%</div>
+          </div>
+          <div class="admin-quota-item">
+            <div class="admin-quota-label">Tokens: ${key.tokens_used} / ${key.tokens_limit || '∞'}</div>
+            <div class="admin-quota-bar-track">
+              <div class="admin-quota-bar-fill admin-quota-bar-tokens" style="width:${Math.min(100, tokPct)}%"></div>
+            </div>
+            <div class="admin-quota-pct">${tokPct.toFixed(1)}%</div>
+          </div>
+        </div>
+        <div class="admin-key-actions">
+          <button class="btn btn-sm btn-outline admin-usage-btn" data-key="${esc(key.key_preview.split('…')[0])}">📊 Usage</button>
+          ${key.is_active ? `<button class="btn btn-sm btn-danger admin-revoke-btn" data-key="${esc(key.key_preview.split('…')[0])}">🔒 Revoke</button>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  // Attach event listeners
+  document.querySelectorAll('.admin-revoke-btn').forEach(btn => {
+    btn.addEventListener('click', () => revokeKey(btn.dataset.key));
+  });
+  document.querySelectorAll('.admin-usage-btn').forEach(btn => {
+    btn.addEventListener('click', () => showKeyUsage(btn.dataset.key));
+  });
+}
+
+/* ── Create new API key ── */
+el.createKeyBtn.addEventListener('click', async () => {
+  const adminKey = el.adminApiKey.value.trim();
+  if (!adminKey) {
+    alert('Please enter an admin API key first.');
+    return;
+  }
+
+  const name = el.newKeyName.value.trim();
+  if (!name) {
+    alert('Key name is required.');
+    return;
+  }
+
+  const body = {
+    name,
+    role: el.newKeyRole.value,
+    tenant_id: el.newKeyTenant.value.trim() || 'default',
+    quota_requests: parseInt(el.newKeyQuotaReq.value) || null,
+    quota_tokens: parseInt(el.newKeyQuotaToken.value) || null,
+    description: el.newKeyDesc.value.trim() || null,
+  };
+
+  el.createKeyBtn.disabled = true;
+  el.createKeyBtn.textContent = '⏳ Creating…';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/admin/keys`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': adminKey },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || 'Failed to create key');
+    }
+
+    const data = await res.json();
+    el.createKeyResult.classList.remove('hidden');
+    el.createKeyResult.innerHTML = `
+      <div class="admin-success-box">
+        <div class="admin-success-title">✅ API Key Created Successfully</div>
+        <div class="admin-success-key">
+          <strong>Key:</strong> <code>${esc(data.key)}</code>
+          <button class="btn btn-sm btn-outline admin-copy-btn" data-text="${esc(data.key)}">📋 Copy</button>
+        </div>
+        <div class="admin-success-warning">⚠️ Save this key securely — it won't be shown again!</div>
+      </div>`;
+
+    // Attach copy button listener
+    document.querySelector('.admin-copy-btn').addEventListener('click', function() {
+      navigator.clipboard.writeText(this.dataset.text);
+      this.textContent = '✓ Copied';
+      setTimeout(() => { this.textContent = '📋 Copy'; }, 2000);
+    });
+
+    // Clear form
+    el.newKeyName.value = '';
+    el.newKeyTenant.value = '';
+    el.newKeyQuotaReq.value = '';
+    el.newKeyQuotaToken.value = '';
+    el.newKeyDesc.value = '';
+
+    // Refresh keys list
+    await refreshAdminPanel();
+  } catch (err) {
+    alert(`Create key error: ${err.message}`);
+  } finally {
+    el.createKeyBtn.disabled = false;
+    el.createKeyBtn.textContent = '🔑 Create API Key';
+  }
+});
+
+/* ── Revoke key ── */
+async function revokeKey(keyId) {
+  const adminKey = el.adminApiKey.value.trim();
+  if (!confirm(`Revoke key "${keyId}…"? This action cannot be undone.`)) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/admin/keys/${keyId}`, {
+      method: 'DELETE',
+      headers: { 'X-API-Key': adminKey },
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || 'Failed to revoke key');
+    }
+
+    await refreshAdminPanel();
+  } catch (err) {
+    alert(`Revoke error: ${err.message}`);
+  }
+}
+
+/* ── Show key usage detail ── */
+async function showKeyUsage(keyId) {
+  const adminKey = el.adminApiKey.value.trim();
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/admin/keys/${keyId}/usage`, {
+      headers: { 'X-API-Key': adminKey },
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || 'Failed to load usage');
+    }
+
+    const data = await res.json();
+    alert(`Usage for ${data.name}:\n\n` +
+          `Requests: ${data.requests_used} / ${data.requests_limit || '∞'} (${data.quota_pct_requests}%)\n` +
+          `Tokens: ${data.tokens_used} / ${data.tokens_limit || '∞'} (${data.quota_pct_tokens}%)\n` +
+          `Role: ${data.role}\n` +
+          `Tenant: ${data.tenant_id}\n` +
+          `Status: ${data.is_active ? 'Active' : 'Revoked'}`);
+  } catch (err) {
+    alert(`Usage error: ${err.message}`);
+  }
+}
+
+/* ── Refresh audit log ── */
+async function refreshAuditLog() {
+  const adminKey = el.adminApiKey.value.trim();
+  if (!adminKey) return;
+
+  const tenantFilter = el.auditFilterTenant?.value.trim() || null;
+  const eventFilter = el.auditFilterEvent?.value.trim() || null;
+
+  try {
+    const params = new URLSearchParams({ limit: '50' });
+    if (tenantFilter) params.append('tenant_id', tenantFilter);
+    if (eventFilter) params.append('event_type', eventFilter);
+
+    const res = await fetch(`${API_BASE}/api/v1/admin/audit?${params}`, {
+      headers: { 'X-API-Key': adminKey },
+    });
+
+    if (!res.ok) return;
+
+    const data = await res.json();
+    renderAuditLog(data.entries || []);
+  } catch (err) {
+    console.error('Audit log error:', err);
+  }
+}
+
+/* ── Render audit log entries ── */
+function renderAuditLog(entries) {
+  if (!entries || entries.length === 0) {
+    el.adminAuditList.innerHTML = '<div class="empty-state">No audit entries found.</div>';
+    return;
+  }
+
+  el.adminAuditList.innerHTML = entries.map(entry => {
+    const ts = new Date(entry.timestamp * 1000).toLocaleString();
+    const eventColor = entry.event_type === 'key_created' ? '#10b981'
+                     : entry.event_type === 'key_revoked' ? '#ef4444'
+                     : entry.event_type === 'quota_exceeded' ? '#f59e0b'
+                     : '#6366f1';
+    return `
+      <div class="admin-audit-entry">
+        <div class="admin-audit-header">
+          <span class="admin-audit-event" style="color:${eventColor}">● ${esc(entry.event_type)}</span>
+          <span class="admin-audit-time">${ts}</span>
+        </div>
+        <div class="admin-audit-detail">${esc(entry.detail || '—')}</div>
+        <div class="admin-audit-meta">
+          <span>Tenant: ${esc(entry.tenant_id || 'n/a')}</span>
+          <span>Key: ${esc(entry.api_key_preview || 'n/a')}</span>
+          <span>${esc(entry.method || '')} ${esc(entry.endpoint || '')}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ── Clear audit log ── */
+el.clearAuditBtn?.addEventListener('click', async () => {
+  const adminKey = el.adminApiKey.value.trim();
+  if (!adminKey) {
+    alert('Please enter an admin API key.');
+    return;
+  }
+  if (!confirm('Clear all audit log entries? This cannot be undone.')) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/admin/audit`, {
+      method: 'DELETE',
+      headers: { 'X-API-Key': adminKey },
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || 'Failed to clear audit log');
+    }
+
+    await refreshAuditLog();
+    alert('Audit log cleared.');
+  } catch (err) {
+    alert(`Clear audit error: ${err.message}`);
+  }
+});
+
+/* ── Admin panel event listeners ── */
+el.refreshAdminBtn?.addEventListener('click', refreshAdminPanel);
+el.applyAuditFilters?.addEventListener('click', refreshAuditLog);
 
 /* ════════════════════════════════════════════
    Polling — every 6 s

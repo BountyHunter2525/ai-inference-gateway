@@ -44,6 +44,9 @@ app.add_middleware(
         "X-Cache-Similarity",
         "X-Response-Time-Ms",
         "X-TTL-Category",
+        "X-Tenant-ID",
+        "X-Quota-Requests-Remaining",
+        "X-Quota-Tokens-Remaining",
     ],
 )
 
