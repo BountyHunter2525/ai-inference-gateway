@@ -10,6 +10,7 @@
 
 | SHA | Message | Date |
 |---|---|---|
+| `6b7ec0a` | feat: Add comprehensive Admin Panel UI for API key management and audit log | Oct 2026 |
 | `ccc5b13` | feat: advanced cache management with adaptive TTL, LRU eviction, and cache warming | Oct 2026 |
 | `f349420` | test: expand test suite to 117 tests and fix CI pipeline | Oct 2026 |
 | `d376f59` | feat: add ML embeddings and Prometheus observability | Oct 2026 |
@@ -134,19 +135,73 @@ The base gateway was built first — all features below build on top of it.
 
 ---
 
-## Remaining Options
+### ✅ Option 4 — Enterprise Features 🏢
+**Commit:** `6b7ec0a`
 
-### Option 4 — Enterprise Features 🏢
-**Complexity:** High | **Value:** Production deployment
+**Backend Infrastructure:**
+- **API Key Store** (`services/key_store.py`) — KeyMetadata dataclass with role, tenant_id, quota limits, creation timestamp, active status
+- Redis-backed persistent key storage with in-memory fallback
+- Built-in seed keys: 3 pre-configured keys (1 admin, 2 users with different tenant IDs)
+- Daily quota tracking per key: request count + token count
+- `create_key()`, `get_key()`, `list_keys()`, `revoke_key()`, `record_usage()`, `check_quota()` operations
 
-- [ ] JWT / OAuth2 token authentication alongside the current API key system
-- [ ] Per-key usage quotas and billing counters (tokens used, requests per day)
-- [ ] Multi-tenancy: isolated cache namespaces per API key or tenant ID
-- [ ] Admin dashboard UI for API key management (create, revoke, view usage)
-- [ ] Structured audit logging (who called what, when, with what result)
-- [ ] Role-based access control (read-only keys, admin keys, etc.)
+**Audit Logging** (`services/audit_log.py`):
+- Structured event logging: `auth_failed`, `inference`, `quota_exceeded`, `key_created`, `key_revoked`, `admin_action`
+- Redis LPUSH+LTRIM with configurable TTL and max entries (default: 7 days, 200 entries)
+- API key masking (first 8 chars visible) for security
+- Memory fallback when Redis unavailable
+- `log_event()`, `get_recent()`, `clear()` with filtering by tenant_id and event_type
+
+**Prometheus Metrics** (`services/metrics.py`):
+- `ENTERPRISE_ACTIVE_KEYS_GAUGE` — real-time count of active keys
+- `ENTERPRISE_QUOTA_REQUESTS_USED` / `ENTERPRISE_QUOTA_TOKENS_USED` gauges (per tenant_id)
+- `ENTERPRISE_QUOTA_EXCEEDED_TOTAL` counter (per tenant_id)
+- `ENTERPRISE_AUDIT_EVENTS_TOTAL` counter (per event_type)
+- `ENTERPRISE_AUTH_FAILURES_TOTAL` counter (per failure reason)
+- `ENTERPRISE_REQUESTS_BY_TENANT` counter (per tenant_id + cache_result)
+
+**Admin API** (`api/v1/admin.py`):
+| Endpoint | Purpose |
+|---|---|
+| `POST /admin/keys` | Create new API key with role, tenant, quotas |
+| `GET /admin/keys` | List all keys with usage stats (filterable by tenant) |
+| `GET /admin/keys/{key}/usage` | Detailed usage for single key |
+| `DELETE /admin/keys/{key}` | Revoke a key (soft-delete) |
+| `GET /admin/audit` | Recent audit log (filterable by tenant/event) |
+| `DELETE /admin/audit` | Clear entire audit log |
+| `GET /admin/stats` | Aggregate dashboard (keys, tenants, audit volume) |
+
+**Enhanced Auth** (`api/deps.py`):
+- `verify_api_key()` — full enterprise pipeline: key validation → rate limit → daily quota check → audit log → response headers
+- `verify_admin_key()` — admin-only endpoints (accepts ADMIN_API_KEY or any key with role='admin')
+- Request state injection: `request.state.tenant_id`, `request.state.api_key`, `request.state.role`
+- Response headers: `X-Tenant-ID`, `X-Quota-Requests-Remaining`, `X-Quota-Tokens-Remaining`
+
+**Frontend — Admin Panel Tab:**
+- **Dashboard Stats:** Active keys, tenant count, audit events today
+- **Create Key Form:** Name, role (user/admin), tenant ID, request/token quotas, description
+- **API Keys List:** Real-time display with:
+  - Key preview, role, tenant, active/revoked status
+  - Quota progress bars (requests and tokens) with percentage fill
+  - Usage detail button (shows full quota breakdown)
+  - Revoke button (with confirmation dialog)
+- **Audit Log Viewer:**
+  - Chronological event list with timestamps
+  - Color-coded event types (key_created=green, key_revoked=red, quota_exceeded=amber)
+  - Filterable by tenant ID and event type
+  - Clear log button (admin-only)
+- **Admin API Key Input:** Stores admin key for all operations
+
+**Security Features:**
+- Admin endpoints protected by role-based access control
+- Self-revocation prevention (can't revoke the key currently in use)
+- API keys masked in audit logs and frontend displays
+- Quota enforcement at request time prevents over-usage
+- All admin actions logged to audit trail
 
 ---
+
+## Remaining Options
 
 ### Option 5 — Advanced AI Features 🤖
 **Complexity:** Medium | **Value:** Highest UX impact
@@ -193,17 +248,32 @@ NexusAI Gateway
 │   ├── ✅ GET /api/v1/metrics scrape endpoint
 │   └── ✅ Monitoring dashboard tab (latency, similarity, rate limiter)
 │
+├── ✅ Enterprise Features (Option 4)
+│   ├── ✅ Key Store — role-based keys, tenant isolation, quota limits
+│   ├── ✅ Daily quota enforcement (requests + tokens per key)
+│   ├── ✅ Audit log — structured events, filtering, Redis persistence
+│   ├── ✅ Admin API — 7 endpoints for key CRUD + audit access
+│   ├── ✅ Admin Panel UI — key management, quota visualization, audit viewer
+│   ├── ✅ Response headers (X-Tenant-ID, X-Quota-*-Remaining)
+│   └── ✅ Enterprise Prometheus metrics (per-tenant counters)
+│
 ├── ✅ Admin API
 │   ├── ✅ GET  /cache/stats
 │   ├── ✅ DELETE /cache/clear
 │   ├── ✅ POST   /cache/warm                                            [Option 3]
 │   ├── ✅ DELETE /cache/evict/{id}                                      [Option 3]
-│   └── ✅ GET    /cache/inspect/{id}                                    [Option 3]
+│   ├── ✅ GET    /cache/inspect/{id}                                    [Option 3]
+│   ├── ✅ POST   /admin/keys                                            [Option 4]
+│   ├── ✅ GET    /admin/keys                                            [Option 4]
+│   ├── ✅ GET    /admin/keys/{key}/usage                                [Option 4]
+│   ├── ✅ DELETE /admin/keys/{key}                                      [Option 4]
+│   ├── ✅ GET    /admin/audit                                           [Option 4]
+│   ├── ✅ DELETE /admin/audit                                           [Option 4]
+│   └── ✅ GET    /admin/stats                                           [Option 4]
 │
 ├── ✅ Test suite — 117 tests (Option 6)
 ├── ✅ CI pipeline — GitHub Actions (test / lint / boot-check)
 │
-├── ⬜ Enterprise auth, multi-tenancy, billing                           [Option 4]
 ├── ⬜ Response streaming (SSE), multi-model routing                    [Option 5]
 └── ⬜ Prometheus+Grafana Docker stack, Kubernetes, Terraform            [Option 7]
 ```
