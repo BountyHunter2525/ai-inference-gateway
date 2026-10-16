@@ -24,124 +24,302 @@
         </div>
       </div>
       <div class="header-status">
-        <div class="status-indicator online"></div>
+        <div class="status-indicator online" id="statusDot"></div>
         <span id="gatewayStatus">Connecting...</span>
       </div>
     </header>
 
-    <!-- Main Grid -->
-    <main class="main-grid">
-      <!-- Left Column: Controls & Prompt -->
-      <section class="card glass-card">
-        <h2>Inference Playground</h2>
-        <p class="section-desc">Test real-time semantic caching, similarity matching, and volatility routing.</p>
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="playground">
+        <span class="tab-icon">🧪</span> Playground
+      </button>
+      <button class="tab-btn" data-tab="monitoring">
+        <span class="tab-icon">📊</span> Monitoring
+      </button>
+    </nav>
 
-        <div class="form-group">
-          <label for="apiKey">Gateway API Key</label>
-          <input type="password" id="apiKey" value="sk-nexus-dev-demo-key" placeholder="Enter API Key">
-        </div>
+    <!-- ═══════════════════════════════════════════════════
+         TAB 1 — INFERENCE PLAYGROUND
+    ═══════════════════════════════════════════════════ -->
+    <div id="tab-playground" class="tab-content active">
+      <main class="main-grid">
+        <!-- Left Column: Controls & Prompt -->
+        <section class="card glass-card">
+          <h2>Inference Playground</h2>
+          <p class="section-desc">Test real-time semantic caching, similarity matching, and volatility routing.</p>
 
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label for="providerSelect">Provider</label>
-            <select id="providerSelect">
-              <option value="mock" selected>Mock Engine (Local Instant)</option>
-              <option value="huggingface">Hugging Face API</option>
-              <option value="openai">OpenAI / OpenRouter</option>
-            </select>
+          <div class="form-group">
+            <label for="apiKey">Gateway API Key</label>
+            <input type="password" id="apiKey" value="sk-nexus-dev-demo-key" placeholder="Enter API Key">
           </div>
-          <div class="form-group flex-1">
-            <label for="modelInput">Model</label>
-            <input type="text" id="modelInput" placeholder="Default model" value="nexus-mock-v1">
-          </div>
-        </div>
 
-        <div class="form-group">
-          <div class="label-row">
-            <label for="promptInput">Prompt</label>
-            <span class="sample-label">Try Examples:</span>
-          </div>
-          <div class="quick-samples">
-            <button type="button" class="sample-btn" data-prompt="What is the capital of France?">Capital of France</button>
-            <button type="button" class="sample-btn" data-prompt="What is France's capital city?">France's capital city (Semantic Match)</button>
-            <button type="button" class="sample-btn" data-prompt="What is the weather today in Tokyo?">Weather today (Volatile / Bypass)</button>
-          </div>
-          <textarea id="promptInput" rows="4" placeholder="Enter your prompt here..."></textarea>
-        </div>
-
-        <div class="checkbox-group">
-          <label class="toggle-container">
-            <input type="checkbox" id="bypassCache">
-            <span class="toggle-slider"></span>
-            <span class="toggle-label">Bypass Semantic Cache (Force fresh LLM run)</span>
-          </label>
-        </div>
-
-        <button id="sendBtn" class="btn btn-primary">
-          <span class="btn-text">Execute Inference</span>
-          <div class="spinner hidden" id="spinner"></div>
-        </button>
-
-        <!-- Response Area -->
-        <div id="resultContainer" class="result-box hidden">
-          <div class="result-header">
-            <div class="badge" id="cacheBadge">CACHE STATUS</div>
-            <div class="metrics-tags" id="metricsTags">
-              <span class="tag latency" id="latencyTag">-- ms</span>
-              <span class="tag tokens" id="tokensTag">-- tokens</span>
-              <span class="tag similarity hidden" id="similarityTag">Sim: --%</span>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="providerSelect">Provider</label>
+              <select id="providerSelect">
+                <option value="mock" selected>Mock Engine (Local Instant)</option>
+                <option value="huggingface">Hugging Face API</option>
+                <option value="openai">OpenAI / OpenRouter</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label for="modelInput">Model</label>
+              <input type="text" id="modelInput" placeholder="Default model" value="nexus-mock-v1">
             </div>
           </div>
-          <div class="result-body">
-            <pre id="responseText"></pre>
-          </div>
-        </div>
-      </section>
 
-      <!-- Right Column: Live Cache & Architecture Inspector -->
-      <section class="card glass-card">
-        <div class="header-with-action">
-          <h2>Semantic Cache Telemetry</h2>
-          <button id="flushCacheBtn" class="btn btn-sm btn-danger">Flush Cache</button>
-        </div>
-        <p class="section-desc">Monitors stored query embeddings, hit ratios, and storage tier.</p>
+          <div class="form-group">
+            <div class="label-row">
+              <label for="promptInput">Prompt</label>
+              <span class="sample-label">Try Examples:</span>
+            </div>
+            <div class="quick-samples">
+              <button type="button" class="sample-btn" data-prompt="What is the capital of France?">Capital of France</button>
+              <button type="button" class="sample-btn" data-prompt="What is France's capital city?">France's capital (Semantic Match)</button>
+              <button type="button" class="sample-btn" data-prompt="What is the weather today in Tokyo?">Weather today (Volatile)</button>
+            </div>
+            <textarea id="promptInput" rows="4" placeholder="Enter your prompt here..."></textarea>
+          </div>
 
-        <!-- Stats Bar -->
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-value" id="hitRatio">0%</div>
-            <div class="stat-label">Cache Hit Ratio</div>
+          <div class="checkbox-group">
+            <label class="toggle-container">
+              <input type="checkbox" id="bypassCache">
+              <span class="toggle-slider"></span>
+              <span class="toggle-label">Bypass Semantic Cache (Force fresh LLM run)</span>
+            </label>
           </div>
-          <div class="stat-card">
-            <div class="stat-value" id="totalCached">0</div>
-            <div class="stat-label">Cached Queries</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value" id="storageBackend">--</div>
-            <div class="stat-label">Storage Backend</div>
-          </div>
-        </div>
 
-        <!-- Active Cached Entries List -->
-        <div class="cache-list-container">
-          <h3>Active Cached Memory Entries</h3>
-          <div id="cacheEntriesList" class="cache-entries-list">
-            <div class="empty-state">No queries cached yet. Run your first inference!</div>
+          <button id="sendBtn" class="btn btn-primary">
+            <span class="btn-text">Execute Inference</span>
+            <div class="spinner hidden" id="spinner"></div>
+          </button>
+
+          <!-- Response Area -->
+          <div id="resultContainer" class="result-box hidden">
+            <div class="result-header">
+              <div class="badge" id="cacheBadge">CACHE STATUS</div>
+              <div class="metrics-tags" id="metricsTags">
+                <span class="tag latency" id="latencyTag">-- ms</span>
+                <span class="tag tokens" id="tokensTag">-- tokens</span>
+                <span class="tag similarity hidden" id="similarityTag">Sim: --%</span>
+              </div>
+            </div>
+            <div class="result-body">
+              <pre id="responseText"></pre>
+            </div>
+          </div>
+        </section>
+
+        <!-- Right Column: Live Cache Telemetry -->
+        <section class="card glass-card">
+          <div class="header-with-action">
+            <h2>Semantic Cache Telemetry</h2>
+            <button id="flushCacheBtn" class="btn btn-sm btn-danger">Flush Cache</button>
+          </div>
+          <p class="section-desc">Monitors stored query embeddings, hit ratios, and storage tier.</p>
+
+          <!-- Stats Bar -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value" id="hitRatio">0%</div>
+              <div class="stat-label">Cache Hit Ratio</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="totalCached">0</div>
+              <div class="stat-label">Cached Queries</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="storageBackend">--</div>
+              <div class="stat-label">Storage Backend</div>
+            </div>
+          </div>
+
+          <!-- Active Cached Entries List -->
+          <div class="cache-list-container">
+            <h3>Active Cached Memory Entries</h3>
+            <div id="cacheEntriesList" class="cache-entries-list">
+              <div class="empty-state">No queries cached yet. Run your first inference!</div>
+            </div>
+          </div>
+
+          <!-- Concept Callout -->
+          <div class="concept-callout">
+            <h4>💡 How NexusAI Resolves Staleness</h4>
+            <ul>
+              <li><strong>Semantic Cosine Threshold:</strong> Matches queries with similarity &ge; 92% to return previous answers instantly (~5ms).</li>
+              <li><strong>Query Volatility Detection:</strong> Dynamic queries (weather, live prices) automatically bypass cache.</li>
+              <li><strong>Time-To-Live (TTL):</strong> Stale entries expire automatically.</li>
+            </ul>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         TAB 2 — MONITORING DASHBOARD
+    ═══════════════════════════════════════════════════ -->
+    <div id="tab-monitoring" class="tab-content">
+      <div class="monitoring-header">
+        <div>
+          <h2 class="monitoring-title">Observability Dashboard</h2>
+          <p class="section-desc">Live Prometheus metrics — auto-refreshes every 6 s.</p>
+        </div>
+        <div class="monitoring-controls">
+          <span class="refresh-badge" id="lastRefreshLabel">Last refresh: —</span>
+          <button id="refreshMetricsBtn" class="btn btn-sm btn-outline">↻ Refresh</button>
+        </div>
+      </div>
+
+      <!-- ── Row 1: Embedder status + top-level KPIs ── -->
+      <div class="mon-section-label">Embedder &amp; Model</div>
+      <div class="mon-grid mon-grid-2">
+        <div class="mon-card">
+          <div class="mon-card-title">Embedding Backend</div>
+          <div class="mon-kpi-row">
+            <div class="mon-kpi">
+              <div class="mon-kpi-value" id="embedBackend">—</div>
+              <div class="mon-kpi-label">Active Backend</div>
+            </div>
+            <div class="mon-kpi">
+              <div class="mon-kpi-value" id="embedTotal">—</div>
+              <div class="mon-kpi-label">Total Encodes</div>
+            </div>
+            <div class="mon-kpi">
+              <div class="mon-kpi-value" id="embedP50">—</div>
+              <div class="mon-kpi-label">Latency p50</div>
+            </div>
           </div>
         </div>
-
-        <!-- Gateway Concept Callout -->
-        <div class="concept-callout">
-          <h4>💡 How NexusAI Resolves Staleness</h4>
-          <ul>
-            <li><strong>Semantic Cosine Threshold:</strong> Matches queries with similarity &ge; 92% to return previous answers instantly (~5ms).</li>
-            <li><strong>Query Volatility Detection:</strong> Dynamic queries (weather, live prices) automatically bypass cache.</li>
-            <li><strong>Time-To-Live (TTL):</strong> Stale entries expire automatically.</li>
-          </ul>
+        <div class="mon-card">
+          <div class="mon-card-title">Gateway Health</div>
+          <div class="mon-kpi-row">
+            <div class="mon-kpi">
+              <div class="mon-kpi-value" id="monStorageBackend">—</div>
+              <div class="mon-kpi-label">Cache Backend</div>
+            </div>
+            <div class="mon-kpi">
+              <div class="mon-kpi-value" id="monTotalRequests">—</div>
+              <div class="mon-kpi-label">Total Requests</div>
+            </div>
+            <div class="mon-kpi">
+              <div class="mon-kpi-value" id="monErrorRate">—</div>
+              <div class="mon-kpi-label">Error Count</div>
+            </div>
+          </div>
         </div>
-      </section>
-    </main>
-  </div>
+      </div>
+
+      <!-- ── Row 2: Inference throughput ── -->
+      <div class="mon-section-label">Inference Throughput</div>
+      <div class="mon-grid mon-grid-4">
+        <div class="mon-card mon-card-accent-green">
+          <div class="mon-card-title">Cache Hits</div>
+          <div class="mon-big-value" id="monHits">—</div>
+          <div class="mon-sub" id="monHitPct">—% of requests</div>
+        </div>
+        <div class="mon-card mon-card-accent-indigo">
+          <div class="mon-card-title">Cache Misses</div>
+          <div class="mon-big-value" id="monMisses">—</div>
+          <div class="mon-sub" id="monMissPct">—% of requests</div>
+        </div>
+        <div class="mon-card mon-card-accent-amber">
+          <div class="mon-card-title">Volatile Bypasses</div>
+          <div class="mon-big-value" id="monVolatile">—</div>
+          <div class="mon-sub">real-time queries</div>
+        </div>
+        <div class="mon-card mon-card-accent-purple">
+          <div class="mon-card-title">Tokens Used</div>
+          <div class="mon-big-value" id="monTokens">—</div>
+          <div class="mon-sub">cumulative</div>
+        </div>
+      </div>
+
+      <!-- ── Row 3: Latency percentiles ── -->
+      <div class="mon-section-label">Latency Percentiles</div>
+      <div class="mon-grid mon-grid-3">
+        <div class="mon-card">
+          <div class="mon-card-title">Inference (Cache Hit)</div>
+          <div class="mon-latency-bars" id="latencyHitBars">
+            <div class="lat-row"><span class="lat-label">p50</span><div class="lat-bar-wrap"><div class="lat-bar lat-bar-green" id="latHitP50Bar"></div></div><span class="lat-val" id="latHitP50">—</span></div>
+            <div class="lat-row"><span class="lat-label">p90</span><div class="lat-bar-wrap"><div class="lat-bar lat-bar-green" id="latHitP90Bar"></div></div><span class="lat-val" id="latHitP90">—</span></div>
+            <div class="lat-row"><span class="lat-label">p99</span><div class="lat-bar-wrap"><div class="lat-bar lat-bar-green" id="latHitP99Bar"></div></div><span class="lat-val" id="latHitP99">—</span></div>
+          </div>
+        </div>
+        <div class="mon-card">
+          <div class="mon-card-title">Inference (Cache Miss)</div>
+          <div class="mon-latency-bars" id="latencyMissBars">
+            <div class="lat-row"><span class="lat-label">p50</span><div class="lat-bar-wrap"><div class="lat-bar lat-bar-indigo" id="latMissP50Bar"></div></div><span class="lat-val" id="latMissP50">—</span></div>
+            <div class="lat-row"><span class="lat-label">p90</span><div class="lat-bar-wrap"><div class="lat-bar lat-bar-indigo" id="latMissP90Bar"></div></div><span class="lat-val" id="latMissP90">—</span></div>
+            <div class="lat-row"><span class="lat-label">p99</span><div class="lat-bar-wrap"><div class="lat-bar lat-bar-indigo" id="latMissP99Bar"></div></div><span class="lat-val" id="latMissP99">—</span></div>
+          </div>
+        </div>
+        <div class="mon-card">
+          <div class="mon-card-title">Embed Latency</div>
+          <div class="mon-latency-bars">
+            <div class="lat-row"><span class="lat-label">p50</span><div class="lat-bar-wrap"><div class="lat-bar lat-bar-purple" id="latEmbedP50Bar"></div></div><span class="lat-val" id="latEmbedP50">—</span></div>
+            <div class="lat-row"><span class="lat-label">p90</span><div class="lat-bar-wrap"><div class="lat-bar lat-bar-purple" id="latEmbedP90Bar"></div></div><span class="lat-val" id="latEmbedP90">—</span></div>
+            <div class="lat-row"><span class="lat-label">p99</span><div class="lat-bar-wrap"><div class="lat-bar lat-bar-purple" id="latEmbedP99Bar"></div></div><span class="lat-val" id="latEmbedP99">—</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Row 4: Cache similarity + rate limit ── -->
+      <div class="mon-grid mon-grid-2" style="margin-top:0">
+        <div class="mon-card">
+          <div class="mon-card-title">Similarity Score Distribution</div>
+          <p class="mon-card-desc">Cosine similarity of all cache lookups (hit + miss)</p>
+          <div class="sim-histogram" id="simHistogram">
+            <div class="empty-state">No data yet.</div>
+          </div>
+        </div>
+        <div class="mon-card">
+          <div class="mon-card-title">Rate Limiter</div>
+          <div class="mon-kpi-row" style="margin-top:16px">
+            <div class="mon-kpi">
+              <div class="mon-kpi-value color-green" id="rateLimitAllowed">—</div>
+              <div class="mon-kpi-label">Allowed</div>
+            </div>
+            <div class="mon-kpi">
+              <div class="mon-kpi-value color-red" id="rateLimitRejected">—</div>
+              <div class="mon-kpi-label">Rejected</div>
+            </div>
+            <div class="mon-kpi">
+              <div class="mon-kpi-value" id="rateLimitPct">—</div>
+              <div class="mon-kpi-label">Pass Rate</div>
+            </div>
+          </div>
+          <div class="rate-limit-bar-wrap" style="margin-top:20px">
+            <div class="rate-limit-track">
+              <div class="rate-limit-fill" id="rateLimitFill" style="width:0%"></div>
+            </div>
+            <div class="rate-limit-legend">
+              <span class="color-green">■ Allowed</span>
+              <span class="color-red">■ Rejected</span>
+            </div>
+          </div>
+          <!-- Cache entries gauge -->
+          <div class="mon-card-title" style="margin-top:24px">Active Cache Entries</div>
+          <div class="cache-gauge-wrap">
+            <div class="cache-gauge-value" id="cacheEntriesGauge">—</div>
+            <div class="cache-gauge-label">entries in memory</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Row 5: Raw Prometheus scrape ── -->
+      <div class="mon-section-label">Raw Prometheus Output
+        <a href="/api/v1/metrics" target="_blank" class="raw-link">open /api/v1/metrics ↗</a>
+      </div>
+      <div class="mon-card">
+        <div class="raw-metrics-toolbar">
+          <input type="text" id="metricsFilter" placeholder="Filter metrics (e.g. nexusai_cache)…" class="metrics-filter-input">
+        </div>
+        <pre id="rawMetrics" class="raw-metrics-pre">Loading…</pre>
+      </div>
+
+    </div><!-- end tab-monitoring -->
+  </div><!-- end app-container -->
 
   <script src="app.js"></script>
 </body>
