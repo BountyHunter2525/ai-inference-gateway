@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NexusAI — Intelligent Inference Gateway</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="background-glow glow-1"></div>
+  <div class="background-glow glow-2"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-group">
+        <div class="logo-icon">⚡</div>
+        <div>
+          <h1>Nexus<span class="gradient-text">AI</span></h1>
+          <p class="subtitle">Intelligent Inference Gateway & Semantic Cache</p>
+        </div>
+      </div>
+      <div class="header-status">
+        <div class="status-indicator online"></div>
+        <span id="gatewayStatus">Connecting...</span>
+      </div>
+    </header>
+
+    <!-- Main Grid -->
+    <main class="main-grid">
+      <!-- Left Column: Controls & Prompt -->
+      <section class="card glass-card">
+        <h2>Inference Playground</h2>
+        <p class="section-desc">Test real-time semantic caching, similarity matching, and volatility routing.</p>
+
+        <div class="form-group">
+          <label for="apiKey">Gateway API Key</label>
+          <input type="password" id="apiKey" value="sk-nexus-dev-demo-key" placeholder="Enter API Key">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="providerSelect">Provider</label>
+            <select id="providerSelect">
+              <option value="mock" selected>Mock Engine (Local Instant)</option>
+              <option value="huggingface">Hugging Face API</option>
+              <option value="openai">OpenAI / OpenRouter</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label for="modelInput">Model</label>
+            <input type="text" id="modelInput" placeholder="Default model" value="nexus-mock-v1">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="label-row">
+            <label for="promptInput">Prompt</label>
+            <span class="sample-label">Try Examples:</span>
+          </div>
+          <div class="quick-samples">
+            <button type="button" class="sample-btn" data-prompt="What is the capital of France?">Capital of France</button>
+            <button type="button" class="sample-btn" data-prompt="What is France's capital city?">France's capital city (Semantic Match)</button>
+            <button type="button" class="sample-btn" data-prompt="What is the weather today in Tokyo?">Weather today (Volatile / Bypass)</button>
+          </div>
+          <textarea id="promptInput" rows="4" placeholder="Enter your prompt here..."></textarea>
+        </div>
+
+        <div class="checkbox-group">
+          <label class="toggle-container">
+            <input type="checkbox" id="bypassCache">
+            <span class="toggle-slider"></span>
+            <span class="toggle-label">Bypass Semantic Cache (Force fresh LLM run)</span>
+          </label>
+        </div>
+
+        <button id="sendBtn" class="btn btn-primary">
+          <span class="btn-text">Execute Inference</span>
+          <div class="spinner hidden" id="spinner"></div>
+        </button>
+
+        <!-- Response Area -->
+        <div id="resultContainer" class="result-box hidden">
+          <div class="result-header">
+            <div class="badge" id="cacheBadge">CACHE STATUS</div>
+            <div class="metrics-tags" id="metricsTags">
+              <span class="tag latency" id="latencyTag">-- ms</span>
+              <span class="tag tokens" id="tokensTag">-- tokens</span>
+              <span class="tag similarity hidden" id="similarityTag">Sim: --%</span>
+            </div>
+          </div>
+          <div class="result-body">
+            <pre id="responseText"></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Live Cache & Architecture Inspector -->
+      <section class="card glass-card">
+        <div class="header-with-action">
+          <h2>Semantic Cache Telemetry</h2>
+          <button id="flushCacheBtn" class="btn btn-sm btn-danger">Flush Cache</button>
+        </div>
+        <p class="section-desc">Monitors stored query embeddings, hit ratios, and storage tier.</p>
+
+        <!-- Stats Bar -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="hitRatio">0%</div>
+            <div class="stat-label">Cache Hit Ratio</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="totalCached">0</div>
+            <div class="stat-label">Cached Queries</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="storageBackend">--</div>
+            <div class="stat-label">Storage Backend</div>
+          </div>
+        </div>
+
+        <!-- Active Cached Entries List -->
+        <div class="cache-list-container">
+          <h3>Active Cached Memory Entries</h3>
+          <div id="cacheEntriesList" class="cache-entries-list">
+            <div class="empty-state">No queries cached yet. Run your first inference!</div>
+          </div>
+        </div>
+
+        <!-- Gateway Concept Callout -->
+        <div class="concept-callout">
+          <h4>💡 How NexusAI Resolves Staleness</h4>
+          <ul>
+            <li><strong>Semantic Cosine Threshold:</strong> Matches queries with similarity &ge; 92% to return previous answers instantly (~5ms).</li>
+            <li><strong>Query Volatility Detection:</strong> Dynamic queries (weather, live prices) automatically bypass cache.</li>
+            <li><strong>Time-To-Live (TTL):</strong> Stale entries expire automatically.</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
