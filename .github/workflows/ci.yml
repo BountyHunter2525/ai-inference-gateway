@@ -6,15 +6,30 @@ on:
   pull_request:
     branches: [ main ]
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Shared env — used by every job
+# ─────────────────────────────────────────────────────────────────────────────
+env:
+  # Install CPU-only PyTorch to avoid downloading the 2.5 GB GPU wheel.
+  # The index URL must come BEFORE the requirements install so pip resolves
+  # the lighter wheel correctly.
+  TORCH_INDEX_URL: "https://download.pytorch.org/whl/cpu"
+
+  # sentence-transformers caches downloaded models here.
+  # We persist this directory between runs so the ~90 MB model is only
+  # downloaded once per branch, not on every push.
+  SENTENCE_TRANSFORMERS_HOME: "${{ github.workspace }}/.cache/sentence_transformers"
+
 jobs:
-  # ─────────────────────────────────────────────
-  # Job 1: Run unit tests
-  # ─────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 1 — Unit + Integration Tests
+  # ─────────────────────────────────────────────────────────────────────────────
   test:
-    name: Unit Tests (Python ${{ matrix.python-version }})
+    name: Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.11", "3.12"]
 
@@ -33,13 +48,36 @@ jobs:
           cache: "pip"
           cache-dependency-path: backend/requirements.txt
 
-      - name: 📦 Install dependencies
+      # ── sentence-transformers model cache ──────────────────────────────────
+      # Key includes the model name so a new model triggers a fresh download.
+      - name: 📦 Restore sentence-transformers model cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/sentence_transformers
+          key: st-model-all-MiniLM-L6-v2-${{ runner.os }}
+          restore-keys: |
+            st-model-all-MiniLM-L6-v2-
+
+      - name: 📦 Install CPU-only PyTorch first
+        run: |
+          pip install --index-url ${{ env.TORCH_INDEX_URL }} \
+            torch>=2.2.0
+
+      - name: 📦 Install remaining dependencies
         run: pip install -r requirements.txt
 
-      - name: 🧪 Run tests with pytest
+      - name: 🧪 Run full test suite
+        env:
+          SENTENCE_TRANSFORMERS_HOME: ${{ env.SENTENCE_TRANSFORMERS_HOME }}
+          # Ensure tests always use in-memory fallback (no Redis in CI)
+          USE_IN_MEMORY_FALLBACK: "True"
+          REDIS_URL: "redis://localhost:6379/0"
+          API_KEYS: "sk-nexus-dev-demo-key,sk-test-client-123"
+          DEFAULT_LLM_PROVIDER: "mock"
         run: |
           python -m pytest tests/ -v --tb=short \
-            --junitxml=pytest-report.xml
+            --junitxml=pytest-report.xml \
+            -p no:warnings
 
       - name: 📊 Upload test results
         uses: actions/upload-artifact@v4
@@ -48,9 +86,9 @@ jobs:
           name: pytest-results-${{ matrix.python-version }}
           path: backend/pytest-report.xml
 
-  # ─────────────────────────────────────────────
-  # Job 2: Lint & code style check
-  # ─────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 2 — Lint (Ruff)
+  # ─────────────────────────────────────────────────────────────────────────────
   lint:
     name: Lint (Ruff)
     runs-on: ubuntu-latest
@@ -73,11 +111,11 @@ jobs:
         run: pip install ruff
 
       - name: 🔍 Run Ruff linter
-        run: ruff check app/ --output-format=github
+        run: ruff check app/ tests/ --output-format=github
 
-  # ─────────────────────────────────────────────
-  # Job 3: Verify FastAPI app boots correctly
-  # ─────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 3 — Server Boot + End-to-End smoke test
+  # ─────────────────────────────────────────────────────────────────────────────
   boot-check:
     name: Server Boot Check
     runs-on: ubuntu-latest
@@ -98,41 +136,83 @@ jobs:
           cache: "pip"
           cache-dependency-path: backend/requirements.txt
 
-      - name: 📦 Install dependencies
-        run: pip install -r requirements.txt uvicorn
+      - name: 📦 Restore sentence-transformers model cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/sentence_transformers
+          key: st-model-all-MiniLM-L6-v2-${{ runner.os }}
+          restore-keys: |
+            st-model-all-MiniLM-L6-v2-
 
-      - name: 🚀 Start server and health check
+      - name: 📦 Install CPU-only PyTorch first
+        run: |
+          pip install --index-url ${{ env.TORCH_INDEX_URL }} \
+            torch>=2.2.0
+
+      - name: 📦 Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: 🚀 Start server
+        env:
+          SENTENCE_TRANSFORMERS_HOME: ${{ env.SENTENCE_TRANSFORMERS_HOME }}
+          USE_IN_MEMORY_FALLBACK: "True"
+          REDIS_URL: "redis://localhost:6379/0"
+          API_KEYS: "sk-nexus-dev-demo-key"
+          DEFAULT_LLM_PROVIDER: "mock"
         run: |
           python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
-          sleep 4
-          curl --fail --retry 3 --retry-delay 2 \
+          sleep 5
+
+      - name: ❤️ Health check
+        run: |
+          curl --fail --silent --retry 5 --retry-delay 2 \
             http://localhost:8000/api/v1/health | python -m json.tool
 
-      - name: 📬 Test /infer endpoint (Cache MISS → HIT cycle)
+      - name: 📬 Cache MISS → HIT smoke test
         run: |
-          echo "=== Request 1: Should be Cache MISS ==="
+          echo "=== Request 1: Cache MISS ==="
           curl --fail -s -X POST http://localhost:8000/api/v1/infer \
             -H "Content-Type: application/json" \
             -H "X-API-Key: sk-nexus-dev-demo-key" \
             -d '{"prompt": "What is the capital of France?", "provider": "mock"}' \
             | python -m json.tool
 
-          echo "=== Request 2: Should be Cache HIT ==="
+          echo "=== Request 2: Cache HIT ==="
           curl --fail -s -X POST http://localhost:8000/api/v1/infer \
             -H "Content-Type: application/json" \
             -H "X-API-Key: sk-nexus-dev-demo-key" \
             -d '{"prompt": "What is the capital of France?", "provider": "mock"}' \
             | python -m json.tool
 
-          echo "=== Request 3: Volatile query — Should bypass cache ==="
+          echo "=== Request 3: Volatile query bypass ==="
           curl --fail -s -X POST http://localhost:8000/api/v1/infer \
             -H "Content-Type: application/json" \
             -H "X-API-Key: sk-nexus-dev-demo-key" \
             -d '{"prompt": "What is the weather today in Tokyo?", "provider": "mock"}' \
             | python -m json.tool
 
-      - name: 📊 Verify cache stats
+      - name: 📊 Cache stats
         run: |
           curl --fail -s http://localhost:8000/api/v1/cache/stats \
             -H "X-API-Key: sk-nexus-dev-demo-key" \
             | python -m json.tool
+
+      - name: 📈 Prometheus metrics scrape
+        run: |
+          echo "=== /api/v1/metrics scrape ==="
+          curl --fail -s http://localhost:8000/api/v1/metrics \
+            | grep "^nexusai_" \
+            | head -20
+
+          echo "--- Verifying key metrics present ---"
+          curl -s http://localhost:8000/api/v1/metrics | grep -q "nexusai_inference_requests_total" \
+            && echo "✓ nexusai_inference_requests_total found" \
+            || (echo "✗ MISSING nexusai_inference_requests_total" && exit 1)
+
+          curl -s http://localhost:8000/api/v1/metrics | grep -q "nexusai_cache_hits_total" \
+            && echo "✓ nexusai_cache_hits_total found" \
+            || (echo "✗ MISSING nexusai_cache_hits_total" && exit 1)
+
+          curl -s http://localhost:8000/api/v1/metrics | grep -q "nexusai_embed_requests_total" \
+            && echo "✓ nexusai_embed_requests_total found" \
+            || (echo "✗ MISSING nexusai_embed_requests_total" && exit 1)
