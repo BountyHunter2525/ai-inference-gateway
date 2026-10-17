@@ -10,7 +10,6 @@ process-global and never reset.
 import pytest
 from prometheus_client import REGISTRY
 
-
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 def _counter_value(metric_name: str, **labels) -> float:

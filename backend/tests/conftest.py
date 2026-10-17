@@ -19,7 +19,6 @@ from app.main import app
 from app.services.embedder import EmbedderService, _lightweight_hash_embedding
 from app.services.semantic_cache import SemanticCacheManager
 
-
 # ── Embedder ──────────────────────────────────────────────────────────────────
 
 @pytest.fixture(scope="session")
@@ -64,8 +63,8 @@ def isolated_api_cache(monkeypatch):
     Apply with:  @pytest.mark.usefixtures("isolated_api_cache")
     or by requesting this fixture explicitly.
     """
-    import app.api.v1.inference as inf_mod
     import app.api.v1.cache_admin as admin_mod
+    import app.api.v1.inference as inf_mod
     import app.services.rate_limiter as rl_mod
 
     fresh = SemanticCacheManager()

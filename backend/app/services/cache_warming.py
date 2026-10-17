@@ -45,10 +45,10 @@ async def run_warmup(
     """
     # Late imports to avoid circular dependencies at module load time
     from app.services.cache_ttl_policy import ttl_policy  # noqa: PLC0415
-    from app.services.llm_provider import llm_service      # noqa: PLC0415
-    from app.services.metrics import (                      # noqa: PLC0415
-        CACHE_WARMUP_RUNS_TOTAL,
+    from app.services.llm_provider import llm_service  # noqa: PLC0415
+    from app.services.metrics import (  # noqa: PLC0415
         CACHE_WARMUP_ENTRIES_TOTAL,
+        CACHE_WARMUP_RUNS_TOTAL,
     )
     from app.services.semantic_cache import semantic_cache  # noqa: PLC0415
 

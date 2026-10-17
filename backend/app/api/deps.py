@@ -13,6 +13,7 @@ Changes from original:
 """
 
 import logging
+
 from fastapi import Header, HTTPException, Query, Request, Response, status
 
 from app.config import settings
@@ -40,9 +41,9 @@ async def verify_api_key(
       6. Response headers (X-Tenant-ID, X-Quota-Remaining)
     """
     # Late imports to avoid circular imports at module load time
-    from app.services import audit_log                         # noqa: PLC0415
-    from app.services.key_store import key_store               # noqa: PLC0415
-    from app.services.metrics import (                         # noqa: PLC0415
+    from app.services import audit_log  # noqa: PLC0415
+    from app.services.key_store import key_store  # noqa: PLC0415
+    from app.services.metrics import (  # noqa: PLC0415
         ENTERPRISE_AUTH_FAILURES_TOTAL,
         ENTERPRISE_QUOTA_EXCEEDED_TOTAL,
         RATE_LIMIT_ALLOWED_TOTAL,
@@ -156,7 +157,7 @@ async def verify_admin_key(
     Stricter dependency for /admin/* endpoints.
     Accepts only the configured ADMIN_API_KEY or any key with role='admin'.
     """
-    from app.services import audit_log          # noqa: PLC0415
+    from app.services import audit_log  # noqa: PLC0415
     from app.services.key_store import key_store  # noqa: PLC0415
     from app.services.metrics import ENTERPRISE_AUTH_FAILURES_TOTAL  # noqa: PLC0415
 

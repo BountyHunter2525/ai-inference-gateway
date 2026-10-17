@@ -72,7 +72,7 @@ async def infer(
                 # Enterprise: record usage + per-tenant metric
                 tenant_id = getattr(request.state, "tenant_id", "default") if hasattr(request, "state") else "default"
                 try:
-                    from app.services.key_store import key_store as _ks   # noqa: PLC0415
+                    from app.services.key_store import key_store as _ks  # noqa: PLC0415
                     from app.services.metrics import ENTERPRISE_REQUESTS_BY_TENANT  # noqa: PLC0415
                     _ks.record_usage(api_key, tokens=cached_item.tokens)
                     ENTERPRISE_REQUESTS_BY_TENANT.labels(tenant_id=tenant_id, cache_result="hit").inc()
@@ -118,7 +118,7 @@ async def infer(
         # Enterprise: record usage + per-tenant metric
         tenant_id = getattr(request.state, "tenant_id", "default") if hasattr(request, "state") else "default"
         try:
-            from app.services.key_store import key_store as _ks   # noqa: PLC0415
+            from app.services.key_store import key_store as _ks  # noqa: PLC0415
             from app.services.metrics import ENTERPRISE_REQUESTS_BY_TENANT  # noqa: PLC0415
             _ks.record_usage(api_key, tokens=tokens)
             ENTERPRISE_REQUESTS_BY_TENANT.labels(tenant_id=tenant_id, cache_result=cache_result).inc()

@@ -24,7 +24,7 @@ class MockLLMProvider(LLMProvider):
         selected_model = model or "nexus-mock-v1"
 
         lower = prompt.lower()
-        
+
         # Weather queries (volatile - real-time data)
         if "weather" in lower:
             if "tokyo" in lower:
@@ -35,7 +35,7 @@ class MockLLMProvider(LLMProvider):
                 text = "I don't have real-time weather access. For current New York weather, visit weather.gov or weather.com. NYC experiences humid subtropical climate with cold winters (0-5°C) and hot, humid summers (22-30°C)."
             else:
                 text = "I don't have access to real-time weather data. Please check a weather service like weather.com, Weather Underground, AccuWeather, or your local weather app for current conditions and forecasts."
-        
+
         # Capital cities
         elif "capital" in lower:
             if "france" in lower or "french" in lower:
@@ -48,11 +48,11 @@ class MockLLMProvider(LLMProvider):
                 text = "The capital of the United States is Washington, D.C. (District of Columbia). Located on the east coast along the Potomac River, it was established as the nation's capital in 1790. The city is home to all three branches of the U.S. federal government and features iconic monuments like the White House, U.S. Capitol, Lincoln Memorial, and Washington Monument."
             else:
                 text = "To help you with capital cities, please specify which country you're asking about. For example: 'What is the capital of France?', 'Tell me about Japan's capital', or 'What's the capital of Brazil?'"
-        
+
         # Machine Learning / AI
         elif "machine learning" in lower or " ml " in lower or "artificial intelligence" in lower or " ai " in lower:
             text = "Machine Learning (ML) is a subset of artificial intelligence that enables computer systems to learn and improve from experience without being explicitly programmed. ML algorithms analyze data to identify patterns and make predictions or decisions.\n\nKey types include:\n• Supervised Learning: Training with labeled data (e.g., classification, regression)\n• Unsupervised Learning: Finding patterns in unlabeled data (e.g., clustering)\n• Reinforcement Learning: Learning through trial and error with rewards\n\nCommon applications: recommendation systems (Netflix, Spotify), image recognition (facial recognition), natural language processing (ChatGPT, translation), fraud detection, autonomous vehicles, and medical diagnosis."
-        
+
         # Python code
         elif "python" in lower and ("code" in lower or "function" in lower or "script" in lower or "example" in lower):
             text = """Here's a practical Python example:
@@ -61,19 +61,19 @@ class MockLLMProvider(LLMProvider):
 def analyze_text(text):
     \"\"\"Analyze text and return statistics\"\"\"
     words = text.lower().split()
-    
+
     # Count words
     word_count = len(words)
-    
+
     # Count unique words
     unique_words = len(set(words))
-    
+
     # Find most common word
     word_freq = {}
     for word in words:
         word_freq[word] = word_freq.get(word, 0) + 1
     most_common = max(word_freq, key=word_freq.get) if word_freq else None
-    
+
     return {
         'total_words': word_count,
         'unique_words': unique_words,
@@ -88,7 +88,7 @@ print(f"Analysis: {results}")
 ```
 
 This function provides text statistics including word count, unique words, and most common word."""
-        
+
         # Explain/What is
         elif "what is" in lower or "explain" in lower or "tell me about" in lower:
             if "python" in lower:
@@ -98,16 +98,16 @@ This function provides text statistics including word count, unique words, and m
             elif "blockchain" in lower:
                 text = "Blockchain is a distributed ledger technology that records transactions across multiple computers in a way that makes the records difficult to alter retroactively. Each 'block' contains transaction data and is cryptographically linked to the previous block, forming a 'chain'. Key features include decentralization, transparency, immutability, and consensus mechanisms. While famous for cryptocurrencies like Bitcoin, blockchain has applications in supply chain, healthcare, voting systems, and digital identity."
             else:
-                text = f"Based on your question, I'd be happy to explain. However, to provide the most accurate and helpful information, could you please be more specific about what you'd like to know? For example, if you're asking about a technology, concept, or topic, providing more context will help me give you a better answer."
-        
+                text = "Based on your question, I'd be happy to explain. However, to provide the most accurate and helpful information, could you please be more specific about what you'd like to know? For example, if you're asking about a technology, concept, or topic, providing more context will help me give you a better answer."
+
         # How to
         elif "how to" in lower or "how do i" in lower or "how can i" in lower:
             text = "To help you effectively, I need more details about what you're trying to accomplish. Here's a general approach:\n\n1. Identify the specific goal or problem\n2. Break it down into smaller steps\n3. Research best practices and available tools\n4. Start with a simple implementation\n5. Test and iterate\n\nPlease provide more context about your specific question (e.g., 'How to create a REST API in Python?' or 'How to optimize database queries?') and I can give you detailed guidance."
-        
+
         # Summarization
         elif "summarize" in lower or "summary" in lower:
-            text = f"To provide an effective summary, I need the content you'd like summarized. A good summary should:\n\n• Capture the main ideas and key points\n• Omit unnecessary details while preserving essential information\n• Be concise yet comprehensive\n• Maintain the original context and meaning\n\nPlease share the text, article, or document you'd like me to summarize, and I'll create a concise overview for you."
-        
+            text = "To provide an effective summary, I need the content you'd like summarized. A good summary should:\n\n• Capture the main ideas and key points\n• Omit unnecessary details while preserving essential information\n• Be concise yet comprehensive\n• Maintain the original context and meaning\n\nPlease share the text, article, or document you'd like me to summarize, and I'll create a concise overview for you."
+
         # Translation
         elif "translate" in lower:
             if "french" in lower:
@@ -116,16 +116,16 @@ This function provides text statistics including word count, unique words, and m
                 text = "¡Puedo ayudarte con traducciones al español! Ejemplo:\n\nEnglish: Hello, how are you? → Spanish: Hola, ¿cómo estás?\nEnglish: Thank you very much → Spanish: Muchas gracias\nEnglish: Where is the bathroom? → Spanish: ¿Dónde está el baño?\n\nFor professional work, consider using DeepL or consulting a native Spanish speaker."
             else:
                 text = "I can assist with translations! Please specify:\n• Source language (what language to translate FROM)\n• Target language (what language to translate TO)\n• The text you want translated\n\nFor professional-grade translations, especially for legal or medical documents, I recommend using certified translators or services like DeepL, Google Translate, or professional translation agencies."
-        
+
         # Math/calculations
         elif any(word in lower for word in ["calculate", "solve", "equation", "math", "algebra"]):
             text = "I can help with mathematics! Common topics include:\n\n• Algebra: Solving equations, factoring, systems of equations\n• Calculus: Derivatives, integrals, limits\n• Statistics: Mean, median, standard deviation, probability\n• Geometry: Area, volume, angles, trigonometry\n\nPlease share the specific problem you'd like help with, and I'll guide you through the solution step by step."
-        
+
         # Default response - more natural
         else:
             # Try to be more helpful based on common patterns
             if "?" in prompt:
-                text = f"Thank you for your question. To provide the most accurate and helpful response, I need a bit more context. Could you please provide more details about what you're looking for? This will help me give you specific, actionable information rather than a general answer."
+                text = "Thank you for your question. To provide the most accurate and helpful response, I need a bit more context. Could you please provide more details about what you're looking for? This will help me give you specific, actionable information rather than a general answer."
             else:
                 text = f"I've received your input about: \"{prompt[:100]}{'...' if len(prompt) > 100 else ''}\"\n\nI'm ready to help! To provide the most useful response, please let me know:\n• What specific information are you looking for?\n• Are you trying to solve a problem, learn a concept, or get a recommendation?\n• Any relevant context that would help me understand your needs better?\n\nFeel free to ask questions about technology, programming, science, general knowledge, or other topics!"
 
@@ -163,7 +163,7 @@ class HuggingFaceProvider(LLMProvider):
                     raise RuntimeError(f"Hugging Face API returned status {resp.status_code}: {resp.text}")
 
                 data = resp.json()
-                
+
                 # Parse response - HF can return different formats
                 if isinstance(data, list) and len(data) > 0:
                     if "generated_text" in data[0]:

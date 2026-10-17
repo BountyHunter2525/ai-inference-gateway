@@ -134,6 +134,7 @@ class TestHuggingFaceProvider:
 
     async def test_custom_model_in_url(self, respx_mock):
         import httpx
+
         from app.services.llm_provider import HuggingFaceProvider
         custom_model = "mistralai/Mistral-7B-v0.1"
         provider = HuggingFaceProvider(token="hf-fake", default_model=custom_model)
@@ -207,6 +208,7 @@ class TestOpenAIProvider:
 
     async def test_custom_base_url_used(self, respx_mock):
         import httpx
+
         from app.services.llm_provider import OpenAIProvider
         provider = OpenAIProvider(
             api_key="sk-fake",

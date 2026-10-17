@@ -41,7 +41,7 @@ async def create_key(
     Generate a new API key with the given role, tenant, and quota settings.
     The generated key value is only returned once — store it securely.
     """
-    from app.services import audit_log          # noqa: PLC0415
+    from app.services import audit_log  # noqa: PLC0415
     from app.services.key_store import key_store  # noqa: PLC0415
 
     meta = key_store.create_key(
@@ -134,7 +134,7 @@ async def revoke_key(
     admin_key: str = Depends(verify_admin_key),
 ):
     """Soft-revoke an API key. The key will immediately stop working."""
-    from app.services import audit_log            # noqa: PLC0415
+    from app.services import audit_log  # noqa: PLC0415
     from app.services.key_store import key_store  # noqa: PLC0415
 
     if key_id == admin_key:
@@ -197,7 +197,7 @@ async def admin_stats(admin_key: str = Depends(verify_admin_key)):
     """
     Aggregate admin dashboard: total keys, tenants, audit volume, per-key usage.
     """
-    from app.services import audit_log            # noqa: PLC0415
+    from app.services import audit_log  # noqa: PLC0415
     from app.services.key_store import key_store  # noqa: PLC0415
 
     all_keys = key_store.list_keys()

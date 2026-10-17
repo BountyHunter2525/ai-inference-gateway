@@ -12,13 +12,13 @@ Metric naming follows Prometheus conventions:
 """
 
 from prometheus_client import (
+    CONTENT_TYPE_LATEST,
     REGISTRY,
     CollectorRegistry,
     Counter,
     Gauge,
     Histogram,
     generate_latest,
-    CONTENT_TYPE_LATEST,
 )
 
 # ---------------------------------------------------------------------------

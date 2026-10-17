@@ -92,7 +92,7 @@ class CachedItem:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "CachedItem":
+    def from_dict(cls, data: dict[str, Any]) -> CachedItem:
         return cls(
             entry_id=data["entry_id"],
             prompt=data["prompt"],
@@ -150,7 +150,7 @@ class SemanticCacheManager:
         prompt: str,
         query_vector: np.ndarray,
         threshold: float | None = None,
-    ) -> tuple[bool, "CachedItem | None", float]:
+    ) -> tuple[bool, CachedItem | None, float]:
         """
         Scan cached vectors and return the best cosine-similarity match.
         Returns: (is_hit, matched_item, similarity_score)
@@ -194,7 +194,7 @@ class SemanticCacheManager:
         tokens: int,
         ttl_seconds: int | None = None,
         ttl_category: str = "general",
-    ) -> "CachedItem":
+    ) -> CachedItem:
         """
         Persist a new inference result.  Enforces CACHE_MAX_ENTRIES via LRU eviction.
         """
@@ -305,7 +305,7 @@ class SemanticCacheManager:
             return True
         return False
 
-    def get_entry(self, entry_id: str) -> "CachedItem | None":
+    def get_entry(self, entry_id: str) -> CachedItem | None:
         """Retrieve a full CachedItem by id (for the inspect endpoint)."""
         if self.redis_client:
             try:

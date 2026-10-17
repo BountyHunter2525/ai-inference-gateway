@@ -29,7 +29,7 @@ import json
 import logging
 import secrets
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from typing import Any
 
 from app.config import settings
@@ -92,7 +92,7 @@ class KeyMetadata:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "KeyMetadata":
+    def from_dict(cls, data: dict[str, Any]) -> KeyMetadata:
         return cls(**{k: v for k, v in data.items() if k in cls.__slots__})
 
 
@@ -231,7 +231,7 @@ class KeyStore:
     # ── Daily usage counters ──────────────────────────────────────────────────
 
     def _usage_key(self, key: str) -> str:
-        date_str = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+        date_str = datetime.now(tz=UTC).strftime("%Y-%m-%d")
         return f"nexus:usage:{key}:{date_str}"
 
     def record_usage(self, key: str, tokens: int = 0) -> None:

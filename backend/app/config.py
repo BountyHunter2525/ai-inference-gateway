@@ -88,7 +88,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str | None = None
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
     OPENAI_MODEL_NAME: str = "gpt-4o-mini"
-    
+
     # OpenRouter Configuration (Access to many models)
     OPENROUTER_API_KEY: str | None = None
     OPENROUTER_MODEL_NAME: str = "meta-llama/llama-3.1-8b-instruct:free"  # Free tier

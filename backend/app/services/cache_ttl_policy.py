@@ -21,7 +21,6 @@ from dataclasses import dataclass
 
 from app.config import settings
 
-
 # ── Keyword patterns per tier ─────────────────────────────────────────────────
 
 _FACTUAL_PATTERNS: list[re.Pattern[str]] = [re.compile(p, re.IGNORECASE) for p in [
