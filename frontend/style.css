@@ -255,13 +255,14 @@ input:focus, select:focus, textarea:focus {
 @keyframes spin { to { transform: rotate(360deg); } }
 .hidden { display: none !important; }
 
-/* Result box */
+/* Result box - PERMANENT FIX */
 .result-box {
   margin-top: 20px;
   background: rgba(10,14,23,0.95);
   border: 1px solid var(--card-border);
   border-radius: 10px;
   padding: 16px;
+  min-height: 120px; /* Ensure minimum height */
 }
 .result-header {
   display: flex; justify-content: space-between; align-items: center;
@@ -286,13 +287,25 @@ input:focus, select:focus, textarea:focus {
 }
 .tag.latency    { color: #93c5fd; }
 .tag.similarity { color: #c4b5fd; }
+
+/* PERMANENT FIX: Response text visibility */
+.result-body {
+  min-height: 60px;
+  padding: 4px 0;
+}
 .result-body pre {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px; line-height: 1.6;
-  white-space: pre-wrap; word-break: break-word;
-  color: #f3f4f6;
-  margin: 0;
-  padding: 0;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 15px !important;
+  line-height: 1.7 !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  color: #ffffff !important; /* Bright white for maximum visibility */
+  background: transparent !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 /* Cache telemetry */

@@ -41,7 +41,7 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ### 4. Open Your Browser
 
-Navigate to: **http://localhost:8000**
+Navigate to: **http://localhostost:8000**
 
 **Default Credentials:**
 - **API Key:** `sk-nexus-dev-demo-key`
