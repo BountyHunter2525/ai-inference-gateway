@@ -290,6 +290,9 @@ input:focus, select:focus, textarea:focus {
   font-family: 'Inter', sans-serif;
   font-size: 14px; line-height: 1.6;
   white-space: pre-wrap; word-break: break-word;
+  color: #f3f4f6;
+  margin: 0;
+  padding: 0;
 }
 
 /* Cache telemetry */
