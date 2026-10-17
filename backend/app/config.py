@@ -73,8 +73,12 @@ class Settings(BaseSettings):
     RATE_LIMIT_MAX_REQUESTS: int = 30
     RATE_LIMIT_WINDOW_SECONDS: int = 60
 
-    # LLM Providers: "mock", "huggingface", "openai"
-    DEFAULT_LLM_PROVIDER: str = "mock"
+    # LLM Providers: "mock", "huggingface", "openai", "groq", "openrouter"
+    DEFAULT_LLM_PROVIDER: str = "groq"
+
+    # Groq Configuration (Free, Fast - Llama models)
+    GROQ_API_KEY: str | None = None
+    GROQ_MODEL_NAME: str = "llama-3.3-70b-versatile"  # or "mixtral-8x7b-32768", "llama-3.1-70b-versatile"
 
     # Hugging Face Configuration
     HF_API_TOKEN: str | None = None
@@ -84,6 +88,10 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str | None = None
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
     OPENAI_MODEL_NAME: str = "gpt-4o-mini"
+    
+    # OpenRouter Configuration (Access to many models)
+    OPENROUTER_API_KEY: str | None = None
+    OPENROUTER_MODEL_NAME: str = "meta-llama/llama-3.1-8b-instruct:free"  # Free tier
 
     @property
     def valid_api_keys(self) -> list[str]:

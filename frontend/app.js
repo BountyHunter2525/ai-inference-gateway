@@ -127,9 +127,11 @@ document.querySelectorAll('.sample-btn').forEach(btn => {
 
 el.providerSelect.addEventListener('change', e => {
   const p = e.target.value;
-  el.modelInput.value = p === 'huggingface' ? 'google/flan-t5-base'
-                      : p === 'openai'      ? 'gpt-4o-mini'
-                      :                       'nexus-mock-v1';
+  el.modelInput.value = p === 'groq'         ? 'llama-3.3-70b-versatile'
+                      : p === 'openrouter'   ? 'meta-llama/llama-3.1-8b-instruct:free'
+                      : p === 'huggingface'  ? 'google/flan-t5-base'
+                      : p === 'openai'       ? 'gpt-4o-mini'
+                      :                        'nexus-mock-v1';
 });
 
 /* ════════════════════════════════════════════

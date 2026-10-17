@@ -193,6 +193,88 @@ class HuggingFaceProvider(LLMProvider):
             raise
 
 
+class GroqProvider(LLMProvider):
+    """Groq - Fast inference with Llama models (Free tier available)"""
+    def __init__(self, api_key: str | None = None, default_model: str | None = None):
+        self.api_key = api_key or settings.GROQ_API_KEY
+        self.default_model = default_model or settings.GROQ_MODEL_NAME
+
+    async def generate(self, prompt: str, model: str | None = None, max_tokens: int = 256, temperature: float = 0.7) -> tuple[str, int, str]:
+        selected_model = model or self.default_model
+        if not self.api_key:
+            logger.warning("GROQ_API_KEY is not configured. Falling back to MockLLMProvider.")
+            return await MockLLMProvider().generate(prompt, selected_model, max_tokens, temperature)
+
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": selected_model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+            "temperature": temperature
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(url, headers=headers, json=payload)
+                if resp.status_code != 200:
+                    logger.error(f"Groq API error {resp.status_code}: {resp.text}")
+                    raise RuntimeError(f"Groq API returned status {resp.status_code}: {resp.text}")
+
+                data = resp.json()
+                out = data["choices"][0]["message"]["content"]
+                tokens = data.get("usage", {}).get("total_tokens", len(prompt.split()) + len(out.split()))
+                return out, tokens, selected_model
+        except Exception as e:
+            logger.error(f"Groq provider error: {e}")
+            raise
+
+
+class OpenRouterProvider(LLMProvider):
+    """OpenRouter - Access to many models including free tier"""
+    def __init__(self, api_key: str | None = None, default_model: str | None = None):
+        self.api_key = api_key or settings.OPENROUTER_API_KEY
+        self.default_model = default_model or settings.OPENROUTER_MODEL_NAME
+
+    async def generate(self, prompt: str, model: str | None = None, max_tokens: int = 256, temperature: float = 0.7) -> tuple[str, int, str]:
+        selected_model = model or self.default_model
+        if not self.api_key:
+            logger.warning("OPENROUTER_API_KEY is not configured. Falling back to MockLLMProvider.")
+            return await MockLLMProvider().generate(prompt, selected_model, max_tokens, temperature)
+
+        url = "https://openrouter.ai/api/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://nexusai.dev",  # Optional: your site URL
+            "X-Title": "NexusAI Gateway"  # Optional: your app name
+        }
+        payload = {
+            "model": selected_model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+            "temperature": temperature
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=45.0) as client:
+                resp = await client.post(url, headers=headers, json=payload)
+                if resp.status_code != 200:
+                    logger.error(f"OpenRouter API error {resp.status_code}: {resp.text}")
+                    raise RuntimeError(f"OpenRouter API returned status {resp.status_code}: {resp.text}")
+
+                data = resp.json()
+                out = data["choices"][0]["message"]["content"]
+                tokens = data.get("usage", {}).get("total_tokens", len(prompt.split()) + len(out.split()))
+                return out, tokens, selected_model
+        except Exception as e:
+            logger.error(f"OpenRouter provider error: {e}")
+            raise
+
+
 class OpenAIProvider(LLMProvider):
     def __init__(self, api_key: str | None = None, base_url: str | None = None, default_model: str | None = None):
         self.api_key = api_key or settings.OPENAI_API_KEY
@@ -236,8 +318,10 @@ class OpenAIProvider(LLMProvider):
 class LLMService:
     def __init__(self):
         self.mock_provider = MockLLMProvider()
+        self.groq_provider = GroqProvider()
         self.hf_provider = HuggingFaceProvider()
         self.openai_provider = OpenAIProvider()
+        self.openrouter_provider = OpenRouterProvider()
 
     async def execute_inference(
         self,
@@ -253,12 +337,18 @@ class LLMService:
         """
         chosen_provider = (provider_name or settings.DEFAULT_LLM_PROVIDER).lower()
 
-        if chosen_provider == "huggingface":
+        if chosen_provider == "groq":
+            text, tokens, model = await self.groq_provider.generate(prompt, model_name, max_tokens, temperature)
+            return text, tokens, model, "groq"
+        elif chosen_provider == "huggingface":
             text, tokens, model = await self.hf_provider.generate(prompt, model_name, max_tokens, temperature)
             return text, tokens, model, "huggingface"
         elif chosen_provider == "openai":
             text, tokens, model = await self.openai_provider.generate(prompt, model_name, max_tokens, temperature)
             return text, tokens, model, "openai"
+        elif chosen_provider == "openrouter":
+            text, tokens, model = await self.openrouter_provider.generate(prompt, model_name, max_tokens, temperature)
+            return text, tokens, model, "openrouter"
         else:
             text, tokens, model = await self.mock_provider.generate(prompt, model_name, max_tokens, temperature)
             return text, tokens, model, "mock"
