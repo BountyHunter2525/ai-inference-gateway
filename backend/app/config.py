@@ -76,9 +76,9 @@ class Settings(BaseSettings):
     # LLM Providers: "mock", "huggingface", "openai", "groq", "openrouter"
     DEFAULT_LLM_PROVIDER: str = "groq"
 
-    # Groq Configuration (Free, Fast - Llama models)
+    # Groq Configuration (Free, Fast - GPT-OSS models)
     GROQ_API_KEY: str | None = None
-    GROQ_MODEL_NAME: str = "llama-3.3-70b-versatile"  # or "mixtral-8x7b-32768", "llama-3.1-70b-versatile"
+    GROQ_MODEL_NAME: str = "openai/gpt-oss-20b"  # Fast 1000 T/sec, or "openai/gpt-oss-120b" for quality
 
     # Hugging Face Configuration
     HF_API_TOKEN: str | None = None

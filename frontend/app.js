@@ -127,7 +127,7 @@ document.querySelectorAll('.sample-btn').forEach(btn => {
 
 el.providerSelect.addEventListener('change', e => {
   const p = e.target.value;
-  el.modelInput.value = p === 'groq'         ? 'llama-3.3-70b-versatile'
+  el.modelInput.value = p === 'groq'         ? 'openai/gpt-oss-20b'
                       : p === 'openrouter'   ? 'meta-llama/llama-3.1-8b-instruct:free'
                       : p === 'huggingface'  ? 'google/flan-t5-base'
                       : p === 'openai'       ? 'gpt-4o-mini'
